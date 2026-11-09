@@ -1,0 +1,13 @@
+{
+  "command": [
+    "target/aarch64-apple-darwin/release/baseline-host",
+    "execute",
+    "--t",
+    "1000",
+    "--seed",
+    "5341522d5a4b2d76302e34622d666978747572652d736565642d303030312121"
+  ],
+  "cwd": ".",
+  "started_at": "2026-11-09T14:29:52+00:00",
+  "timeout_seconds": 5392.66198391607
+}

@@ -1,0 +1,3 @@
+per-entry T=100: setup (distinct shapes only)
+per-entry T=100: proof 1/101
+per-entry T=100: proof 101/101

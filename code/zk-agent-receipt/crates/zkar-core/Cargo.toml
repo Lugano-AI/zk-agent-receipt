@@ -1,0 +1,15 @@
+[package]
+name = "zkar-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["fast"] }
+
+[dev-dependencies]
+curve25519-dalek = "4"

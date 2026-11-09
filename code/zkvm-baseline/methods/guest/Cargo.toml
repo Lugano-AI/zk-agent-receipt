@@ -1,0 +1,16 @@
+[package]
+name = "baseline"
+version = "0.1.0"
+edition = "2021"
+
+# The guest is built by risc0-build, not as a member of the native workspace.
+[workspace]
+
+[dependencies]
+relation = { path = "../../relation", features = ["risc0-accelerated"] }
+risc0-zkvm = { version = "=3.0.6", default-features = false, features = ["std"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

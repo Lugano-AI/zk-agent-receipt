@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["host", "methods", "relation"]
+exclude = ["methods/guest"]
+
+# RISC Zero 3.0.6's macOS build path unconditionally embeds a Metal asset even
+# though this benchmark intentionally uses its CPU-only local prover. The
+# vendored build-script patch emits that unused asset without changing prover
+# or relation code; see README.md.
+[patch.crates-io]
+risc0-sys = { path = "vendor/risc0-sys" }
+
+# Keep development guest builds representative enough for quick iteration.
+[profile.dev]
+opt-level = 3
+
+# Proving benchmarks must use optimized native host and guest artifacts.
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

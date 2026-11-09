@@ -1,0 +1,21 @@
+[package]
+name = "zkar-cli"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.89"
+license.workspace = true
+
+[[bin]]
+name = "zkar"
+path = "src/main.rs"
+
+[dependencies]
+zkar-core = { path = "../zkar-core" }
+zkar-prover = { path = "../zkar-prover" }
+serde_json.workspace = true
+ed25519-dalek = { version = "2", features = ["fast"] }
+bincode = { version = "=2.0.1", features = ["serde"] }
+
+[dev-dependencies]
+ff = "=0.13.1"
+num-bigint = "=0.4.8"

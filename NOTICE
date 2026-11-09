@@ -1,0 +1,11 @@
+Sealed Receipts (zk-agent-receipt)
+Copyright 2026 Lugano AI Holdings LLC
+
+This repository includes a modified copy of risc0-sys v1.5.0 in
+code/zkvm-baseline/vendor/risc0-sys.
+Copyright RISC Zero, Inc. Licensed under the Apache License, Version 2.0.
+
+Our change is in build.rs only. When the environment variable
+RISC0_BASELINE_CPU_ONLY is set, the build script writes an empty Metal
+library file and does not compile the Metal kernels. The CPU-only benchmark
+build needs this. No prover code changed.

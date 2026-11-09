@@ -1,0 +1,5 @@
+folded T=100: setup
+folded T=100: 128 recursive folds
+recursive folds: 64/128
+recursive folds: 128/128
+folded T=100: compression (recursion 11.653s)

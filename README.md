@@ -1,0 +1,95 @@
+# Sealed Receipts
+
+> A draft for public comment, by Lugano Labs. Nobody outside Lugano Labs has audited this work. Do not use it to protect real data.
+
+When an AI agent finishes a task, a signed record of the task can exist. Today, to prove a fact about that record, you must show the whole record. Sealed Receipts let the holder prove that the record follows a policy and keep the record private.
+
+This repository holds the paper, the profile, a reference prover in Rust and the measurements behind the paper. It builds on [Signed Agent Receipt v0.2](https://github.com/Lugano-AI/signed-agent-receipt).
+
+## What is here
+
+| Path | Contents |
+| --- | --- |
+| [`paper/draft.md`](paper/draft.md) | The paper, draft v0.5. It gives the design, the security argument, the experiment and the limits. |
+| [`spec/SAR-ZK.md`](spec/SAR-ZK.md) | The SAR-ZK v0.4-draft profile. This is the normative text. |
+| [`code/zk-agent-receipt`](code/zk-agent-receipt) | The reference prover and verifier for profile b, in Rust, with its tests and benchmark results. |
+| [`code/zkvm-baseline`](code/zkvm-baseline) | The same relation in RISC Zero 3.0.6, for comparison, with its results. |
+
+## What a sealed receipt proves
+
+The holder convinces a verifier of three things and does not show the record:
+
+- A trusted issuer signed the record.
+- The record is in a signed log.
+- The record meets a policy that the verifier selects: only approved tools, nothing sent outside, and no more than a set number of payments.
+
+A sealed receipt proves facts about the record as the issuer wrote it. It does not prove that the agent ran as the record says, or that no data left the system.
+
+## What we measured
+
+We ran all tests on one Apple M5 Max (18 cores, 128 GB), on the CPU only. Our figures are medians of three runs.
+
+| Task steps | Our prover | RISC Zero 3.0.6, composite receipt | RISC Zero time ÷ our time |
+| ---: | ---: | ---: | ---: |
+| 10 | 4.876 s | 795.330 s | 163 |
+| 100 | 15.297 s | 3,311.618 s (one run) | 216 |
+| 1,000 | 94.926 s | 30,415 s (**estimate**; we did not run it) | about 320 |
+
+At 1,000 steps, our proof is 11,784 bytes and the check takes 63.893 ms. The proof size stayed the same at 10, 100 and 1,000 steps, and the check took between 59.9 and 64.3 ms.
+
+The 1,000-step RISC Zero figure is a straight-line estimate from the cycle count (749,207,552) and the two measured runs. Section 9 of the paper gives the method.
+
+### Where the comparison does not favour us
+
+- RISC Zero's succinct receipt checks in about 9 ms. Ours takes about 64 ms.
+- RISC Zero proves any program. Our prover proves one fixed relation.
+- The Apple GPU path is disabled in the RISC Zero 3.0.6 source, and we did not test a CUDA GPU. A GPU would make RISC Zero faster. We cannot say by how much.
+- The RISC Zero run at 100 steps is one run, not a median.
+- Section 9 of the paper lists the cases where our other two baselines win: one proof is smaller, and one uses less memory.
+
+### The three hypotheses
+
+We wrote the hypotheses before we measured.
+
+- **H1: the measurements support it.** Proof size and check time stay flat from 10 to 1,000 steps.
+- **H2: the measurements support it, with a condition.** Our prover is more than 10 times faster than the zkVM on the same relation. The 1,000-step RISC Zero figure is an estimate, and both systems ran on the CPU only.
+- **H3: we cannot test it as written.** The prover uses uniform Nova, which has no separate final circuit. The paper reports the nearest measured quantity and does not rewrite the hypothesis.
+
+## Build and test
+
+You need Rust 1.89 or later. On Apple Silicon, select the arm64 target:
+
+```sh
+cd code/zk-agent-receipt
+cargo test --target aarch64-apple-darwin -j 8 --workspace
+```
+
+The suite has 135 tests. Five more run only in release mode; the command for them is in [`code/zk-agent-receipt/README.md`](code/zk-agent-receipt/README.md). That file also shows how to make keys, check a receipt and run the benchmark.
+
+The RISC Zero baseline needs the RISC Zero toolchain. See [`code/zkvm-baseline/README.md`](code/zkvm-baseline/README.md).
+
+## The results files
+
+- Our prover: [`code/zk-agent-receipt/bench-results/2026-11-09-quiet/`](code/zk-agent-receipt/bench-results/2026-11-09-quiet/) has `results.md`, `results.json`, the run log and the raw record of each run.
+- RISC Zero: [`code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/`](code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/) has the raw record of each proof run. [`2026-11-09-fairness/`](code/zkvm-baseline/bench-results/2026-11-09-fairness/) records two changes that made the baseline faster before we measured it, with the cycle counts before and after.
+
+We changed three things before we published these files:
+
+- We made the file paths in the RISC Zero records relative. No measured value changed.
+- We left out the RISC Zero receipt files. Each is 5 to 22 MB. The raw records keep their sizes and timings.
+- After the measured runs, we edited comments, the documents and the name of one test file. We changed no prover logic and no relation logic.
+
+## Limits
+
+- This is draft research code. It has had an internal security review. It has not had an independent audit.
+- Profile a (an Ed25519 issuer signature checked inside the circuit) is not built.
+- The fixtures are synthetic. Their seeds are public. Never use them for a real receipt.
+- Section 10 of the paper gives the full list.
+
+## Comments
+
+We want to know what is wrong. Open an issue, or write to contact@lugano.ai.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Copyright 2026 Lugano AI Holdings LLC.

@@ -1,0 +1,4 @@
+[env]
+# This benchmark is deliberately CPU-only. It keeps the vendored risc0-sys
+# build script from compiling an unused Metal library on macOS.
+RISC0_BASELINE_CPU_ONLY = { value = "1", force = true }

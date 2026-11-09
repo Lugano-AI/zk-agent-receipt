@@ -1,0 +1,29 @@
+[package]
+name = "relation"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Native SAR-ZK v0.4b relation shared by the host and zkVM guest"
+
+[features]
+default = []
+# Enables the zkVM-only canonical-limb Poseidon backend. Native targets retain
+# the portable halo2/pasta implementation, which is the parity oracle.
+risc0-accelerated = ["dep:risc0-bigint2"]
+# Alternative RISC0 2.2.3 fixed-width modular-multiply syscall backend. It is
+# mutually exclusive with `risc0-accelerated` and exists solely for measured
+# guest comparison against bigint2.
+risc0-legacy-mul = ["dep:risc0-zkvm-platform"]
+
+[dependencies]
+halo2_poseidon = { version = "=0.2.0" }
+pasta_curves = { version = "=0.6.1", features = ["alloc"] }
+rand_chacha = { version = "=0.3.1", default-features = false }
+rand_core = { version = "=0.6.4", default-features = false }
+risc0-bigint2 = { version = "=1.4.14", optional = true, default-features = false }
+risc0-zkvm-platform = { version = "=2.2.3", optional = true, default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+
+[dev-dependencies]
+halo2_poseidon = { version = "=0.2.0", features = ["test-dependencies"] }
+serde_json = "1.0"
