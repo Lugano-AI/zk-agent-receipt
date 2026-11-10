@@ -1,0 +1,37 @@
+name: Real-proof tests
+
+"on":
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-proofs-${{ github.ref }}
+  cancel-in-progress: true
+
+# This job runs the seven ignored tests that make and check real proofs. They
+# need a release build and several minutes of proving, so the job runs only
+# when someone starts it by hand. It does not run on a push.
+jobs:
+  real-proofs:
+    name: macOS arm64 real-proof tests
+    runs-on: macos-15 # arm64 GitHub-hosted runner
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: code/zk-agent-receipt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust 1.94.0
+        run: rustup toolchain install 1.94.0 --profile minimal --target aarch64-apple-darwin
+      - name: Confirm Rust toolchain
+        run: rustup run 1.94.0 rustc --version
+      - name: Run the real-proof tests
+        run: >-
+          rustup run 1.94.0 cargo test --release --locked
+          --target aarch64-apple-darwin
+          -p zkar-prover -p zkar-cli
+          -- --ignored --test-threads=1
