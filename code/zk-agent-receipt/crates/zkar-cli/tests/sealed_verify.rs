@@ -177,6 +177,40 @@ fn cli_keygen_full_verify_tamper_failures_and_replay_exit() {
     );
     reject("signature", tampered);
 
+    // A key file that is not the pinned key must fail on its digest. The
+    // decoder must not read it: this one starts with a huge length prefix.
+    let wrong_key = directory.join("wrong-vk.bin");
+    let mut wrong_bytes = u64::MAX.to_le_bytes().to_vec();
+    wrong_bytes.extend_from_slice(&[0u8; 64]);
+    std::fs::write(&wrong_key, wrong_bytes).unwrap();
+    let output = Command::new(binary)
+        .arg("verify")
+        .arg(&receipt_path)
+        .args(["--vk", wrong_key.to_str().unwrap()])
+        .args(["--vk-digest", &digest])
+        .args(["--trust", trust_path.to_str().unwrap()])
+        .args([
+            "--expected-policy",
+            &sealed::field_decimal(bind.policy_commitment),
+        ])
+        .args([
+            "--expected-scope",
+            &sealed::field_decimal(bind.nullifier_scope),
+        ])
+        .args([
+            "--expected-issuer",
+            &sealed::field_decimal(bind.issuer_key_commitment),
+        ])
+        .args([
+            "--replay-file",
+            directory.join("wrong-vk.replay").to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("verification key does not match the pinned digest"));
+
     std::fs::remove_dir_all(directory).unwrap();
 }
 

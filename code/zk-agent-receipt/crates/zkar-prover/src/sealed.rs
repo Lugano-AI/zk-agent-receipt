@@ -108,6 +108,19 @@ pub fn verify_sealed_receipt(
     let policy_commitment = parse_field_decimal(&receipt.public_input.policy_commitment)?;
     let nullifier_scope = parse_field_decimal(&receipt.public_input.nullifier_scope)?;
     let nullifier = parse_field_decimal(&receipt.public_input.nullifier)?;
+
+    // Compare the receipt with the verifier's own values before any proof
+    // work. The proof is then checked against values the verifier chose.
+    if policy_commitment != expected_policy_commitment {
+        return Err(Error::Invalid("unexpected policy commitment"));
+    }
+    if nullifier_scope != expected_nullifier_scope {
+        return Err(Error::Invalid("unexpected nullifier scope"));
+    }
+    if issuer_key_commitment != expected_issuer_key_commitment {
+        return Err(Error::Invalid("unexpected issuer key commitment"));
+    }
+
     let public_bind = PublicBind {
         profile_tag: F::from(PROFILE_B_TAG),
         issuer_key_commitment,
@@ -120,7 +133,6 @@ pub fn verify_sealed_receipt(
         .fold_count
         .parse::<usize>()
         .map_err(|_| Error::Invalid("invalid fold count"))?;
-    let proof = decode_proof(&receipt.proof)?;
 
     if trust.log_id != receipt.public_input.log_id {
         return Err(Error::Invalid("trust anchor is for a different log"));
@@ -133,6 +145,8 @@ pub fn verify_sealed_receipt(
     }
     let head = zkar_core::verify::canonical_head_bytes(&receipt.public_input)?;
     zkar_core::verify::verify_log_head_signature(trust.ed25519_public_key, &head, &signature)?;
+    // Decode the proof only after the cheap checks pass.
+    let proof = decode_proof(&receipt.proof)?;
     proofs::verify(
         &proof,
         pinned,
@@ -140,16 +154,6 @@ pub fn verify_sealed_receipt(
         &public_bind.to_array(),
         nullifier,
     )?;
-
-    if policy_commitment != expected_policy_commitment {
-        return Err(Error::Invalid("unexpected policy commitment"));
-    }
-    if nullifier_scope != expected_nullifier_scope {
-        return Err(Error::Invalid("unexpected nullifier scope"));
-    }
-    if issuer_key_commitment != expected_issuer_key_commitment {
-        return Err(Error::Invalid("unexpected issuer key commitment"));
-    }
 
     if replay.check_and_insert(nullifier_scope, nullifier)? {
         Ok(Outcome::Passed)
@@ -179,12 +183,19 @@ fn decode_proof(encoded: &str) -> Result<Compressed<UniformCircuit>, Error> {
             "decoded proof exceeds {MAX_PROOF_BYTES} bytes"
         )));
     }
-    let (proof, consumed) = bincode::serde::decode_from_slice(&bytes, bincode::config::legacy())
-        .map_err(|error| Error::ProofDecode(error.to_string()))?;
+    // The decoder reads untrusted bytes. Report a panic inside it as a
+    // rejection, as `proofs::verify` does for the proof check.
+    let (proof, consumed) = std::panic::catch_unwind(|| decode_proof_bytes(&bytes))
+        .map_err(|_| Error::ProofDecode("the proof has a malformed shape".to_owned()))??;
     if consumed != bytes.len() {
         return Err(Error::ProofDecode("trailing bytes after proof".to_owned()));
     }
     Ok(proof)
+}
+
+fn decode_proof_bytes(bytes: &[u8]) -> Result<(Compressed<UniformCircuit>, usize), Error> {
+    bincode::serde::decode_from_slice(bytes, bincode::config::legacy())
+        .map_err(|error| Error::ProofDecode(error.to_string()))
 }
 
 pub fn parse_field_decimal(value: &str) -> Result<F, Error> {
@@ -259,5 +270,40 @@ mod tests {
             decode_proof(&oversized),
             Err(Error::ProofDecode(message)) if message.contains("64") || message.contains("65536")
         ));
+    }
+
+    #[test]
+    fn proof_decoder_survives_hostile_bytes() {
+        // This calls the decoder without the panic guard, so a panic or an
+        // abort fails the test. The result itself is not checked: a buffer
+        // of zeros may be a well-formed proof encoding.
+        let try_decode = |bytes: &[u8]| {
+            let _ = decode_proof_bytes(bytes);
+        };
+
+        // A fixed generator, so a failure can be repeated.
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for length in [0usize, 1, 7, 8, 9, 64, 512, 4096, MAX_PROOF_BYTES] {
+            try_decode(&vec![0u8; length]);
+            for _ in 0..16 {
+                let bytes: Vec<u8> = (0..length).map(|_| next() as u8).collect();
+                try_decode(&bytes);
+            }
+        }
+
+        // A very large length prefix at each 8-byte position near the start.
+        for prefix in [u64::MAX, 1 << 40, 1 << 32, 1 << 20] {
+            for offset in (0..1024).step_by(8) {
+                let mut bytes = vec![0u8; 4096];
+                bytes[offset..offset + 8].copy_from_slice(&prefix.to_le_bytes());
+                try_decode(&bytes);
+            }
+        }
     }
 }

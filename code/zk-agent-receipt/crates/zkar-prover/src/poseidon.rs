@@ -35,9 +35,13 @@ static CONSTANTS: OnceLock<Constants> = OnceLock::new();
 /// Return the big-endian integer represented by an ASCII domain label.
 ///
 /// The profile caps labels at 31 bytes, so their integer encoding is always
-/// canonical in Pallas `Fp`.
+/// canonical in Pallas `Fp`. Labels are printable ASCII: a NUL byte at the
+/// front would give two labels the same integer.
 pub fn domain_tag(domain: &str) -> F {
-    assert!(domain.is_ascii(), "Poseidon domain labels must be ASCII");
+    assert!(
+        domain.bytes().all(|byte| (0x20..=0x7e).contains(&byte)),
+        "Poseidon domain labels must be printable ASCII"
+    );
     assert!(
         domain.len() <= 31,
         "Poseidon domain labels are at most 31 bytes"
@@ -448,5 +452,7 @@ mod tests {
         );
         assert!(std::panic::catch_unwind(|| domain_tag("x".repeat(32).as_str())).is_err());
         assert!(std::panic::catch_unwind(|| domain_tag("\u{80}")).is_err());
+        assert!(std::panic::catch_unwind(|| domain_tag("\0a")).is_err());
+        assert!(std::panic::catch_unwind(|| domain_tag("a\n")).is_err());
     }
 }

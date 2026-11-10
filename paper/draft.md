@@ -1,6 +1,6 @@
 # Sealed Receipts: Zero-Knowledge Policy Checks for AI Agent Task Records
 
-By Lugano Labs. Draft v0.5 for public comment, 9 November 2026.
+By Lugano Labs. Draft v0.5 for public comment, 10 November 2026.
 
 This paper specifies a construction and reports measurements of a profile-b
 reference prover. The prover and the comparison have not been independently
@@ -12,27 +12,28 @@ explains the design and the evidence.
 When an AI agent finishes a task, such as reading mail, moving files or paying
 an invoice, how can the people responsible for it prove the run followed a
 policy without revealing what the agent did? Signed task records, or "agent
-receipts", let anyone check that a record was signed and logged. Today, though,
-checking any fact about the task means reading the whole record.
+receipts", let anyone check that a record was signed and logged. With a plain
+signed record, though, checking any fact about the task means reading the whole
+record.
 
 We specify **Sealed Receipts**. With it, the holder of a receipt can convince a
 verifier of three things without showing the record. A trusted issuer signed
 it. It sits in a signed log. And it meets a policy the verifier picks: only
 approved tools, nothing sent outside, and no more than a set number of
 payments. The verifier also learns a *nullifier*, a value that repeats if the
-same receipt is shown twice in the same context. Its values cannot be linked
-across contexts, though the rest of what a verifier sees may still link two
-presentations.
+same receipt is shown twice in the same context. Under the assumptions in
+Section 7, its values cannot be linked across contexts, though the rest of
+what a verifier sees may still link two presentations.
 
 The reference prover uses uniform Nova over the Pallas/Vesta curve cycle and a
 transparent Spartan SNARK with IPA compression. It needs no trusted setup. Its
 zero-knowledge construction folds in random satisfying instances before
 compression; the implementation has not been independently audited.
 
-On one Apple M5 Max CPU, our 1,000-entry proof took 94.926 s to create and
-63.893 ms to verify, and was 11,784 bytes long. RISC Zero's faster composite
-mode took 29,316 s for the same case (about 308× our proving time), in one run
-on a machine that was also in use. The proof covers the data the issuer
+On one Apple M5 Max CPU, our 1,000-entry proof took 94.926 s to create and 63.9
+ms to verify, and was 11,784 bytes long. RISC Zero's faster composite mode took
+29,316 s for a test record of the same length (about 308× our proving time), in
+one run on a machine that was also in use. The proof covers the data the issuer
 declared, not what the agent actually did.
 
 ## Lay summary
@@ -47,9 +48,11 @@ things without showing it: a trusted party signed it, it sits in a signed log,
 and it followed the rules the checker cares about. Those rules can be "only
 approved tools", "nothing sent outside" and "no more than three payments". The
 checker learns those facts and one more: a code that shows up again if someone
-presents the same record twice to the same checker. Two different checkers
-cannot match their codes to tell they saw the same record, though other clues,
-such as a rare policy or the timing, may still give it away.
+presents the same record twice in the same context, such as one audit. Unless
+the cryptography breaks or the holder's secret leaks, checkers in two different
+contexts cannot match their codes to tell they saw the same record. Checkers
+that share a context can. Other clues, such as a rare policy or the timing, may
+still give it away.
 
 The design has limits. It does not prove the agent really ran as described, or
 that no data left the system. It proves that the record, as the signer wrote it
@@ -59,7 +62,9 @@ cryptography, including tools Zcash uses to keep payments private.
 We built a first working version and measured it on one computer, an Apple M5
 Max, using only its processor. For a task of 1,000 steps, making the proof took
 about 95 seconds. Checking it took about 64 milliseconds, and the proof is
-about 12 kilobytes. Both stayed about the same from 10 steps to 1,000.
+about 12 kilobytes. The checking time and the proof size stayed about the same
+from 10 steps to 1,000. The time to make the proof grew with the number of
+steps.
 
 We ran the same check in the faster mode of RISC Zero, a general-purpose system
 that can prove any program. For a 100-step task it took about 55 minutes,
@@ -79,9 +84,9 @@ fixed-length fingerprint of the artifact. The statement is also a leaf in a
 signed Merkle log, so a verifier can check it was logged. Our Signed Agent
 Receipt v0.2 is one such format, with an offline checker [1].
 
-The problem is disclosure. To learn even one fact, such as "no data left" or
-"only approved tools ran", the verifier must read the full statement. It sees
-every digest and the whole inventory of private work.
+The problem is disclosure. With such a receipt, to learn even one fact, such as
+"no data left" or "only approved tools ran", the verifier must read the full
+statement. It sees every digest and the whole inventory of private work.
 
 So we ask: **what can be verified without recording someone's private work?**
 One answer is to run the whole record check inside a general zero-knowledge
@@ -97,12 +102,14 @@ Our contributions:
 2. **A folding design and a built profile-b prover.** The cheaper design uses a
    small step circuit and a separate final circuit. The reference prover puts
    all three branches in one uniform Nova circuit and pays for each branch on
-   every fold. Its timings are an upper bound for the non-uniform design. The
-   public state is blinded, so it does not fingerprint the receipt (Section
-   5.6).
+   every fold. We expect its timings to be an upper bound for the non-uniform
+   design, which we did not build. The running state is blinded, so it does not
+   fingerprint the receipt (Section 5.6). The nullifier is the one public value
+   that is meant to repeat, and only within a scope.
 3. **Scoped receipt nullifiers.** The nullifier depends on a holder secret and a
    verifier-chosen scope, not on the receipt's log position. Replay within a
-   scope shows up; nullifier values in different scopes cannot be linked. An
+   scope shows up; under the assumptions in Section 7, nullifier values in
+   different scopes cannot be linked. An
    audit mode uses them to check that a holder showed every receipt in a
    period (Section 6).
 4. **A threat model, a privacy analysis and measurements** against hypotheses
@@ -150,33 +157,45 @@ verifiers who should not see the content.
 **Anonymous credentials.** Camenisch–Lysyanskaya [2] and BBS+ signatures [3, 4]
 let a holder prove predicates over issuer-signed attributes without showing
 them. BBS+ presentations cannot be linked to each other. A verifier nonce stops
-a presentation from being replayed to the same verifier, but BBS+ has no
-built-in way to detect the same credential shown to two verifiers, and no
-built-in log membership. Coconut adds threshold issuance [5]. **zk-creds** [6]
-is the closest prior work: it issues credentials to a bulletin board such as a
-transparency log and uses zkSNARKs to prove membership and predicates, without
-needing an issuer signing key. Our design differs in three ways. Each record
-carries an issuer signature over a per-task transcript. The policy is checked
-over a sequence of entries by folding. And the nullifier is per receipt.
+a presentation from being replayed to the same verifier. The base scheme has no
+way to detect one credential shown twice in a context, no log membership, and no
+check over a per-task transcript. Coconut adds threshold issuance [5]. Two
+older lines of work fill parts of that gap. Pseudonym systems [32] let a holder
+deal with each organisation under a separate pseudonym that cannot be linked to
+the others. Compact e-cash [33] gives each coin a serial number, so a second
+spend is detected. Our scoped nullifier does for a receipt what that serial
+number does for a coin.
+**zk-creds** [6] is the closest prior work: it issues credentials to a bulletin
+board such as a transparency log and uses zkSNARKs to prove membership and
+predicates, without needing an issuer signing key. Our design differs in three
+ways. Each record carries an issuer signature over a per-task transcript. The
+policy is checked over a sequence of entries by folding. And the nullifier is
+per receipt. zkLogin [31] also proves in zero knowledge that a user holds a
+token signed by an identity provider. It authenticates a user for a blockchain
+transaction; it does not check a policy over a task record.
 
 **Scoped nullifiers.** Semaphore derives its nullifier from a member secret and
 an "external nullifier", or scope [7]. The same member signalling twice in one
 scope repeats the value; different scopes give unrelated values. Our
 nullifier follows this pattern.
 
-**Zcash.** Zerocash introduced nullifiers to stop double-spending without
-revealing which note was spent [8]. Zcash's Orchard pool works over the
+**Zcash.** Zerocash stopped double-spending without revealing which coin was
+spent, with a value it called a serial number [8]. Zcash calls that value a
+nullifier. Zcash's Orchard pool works over the
 Pallas/Vesta cycle and derives nullifiers with Poseidon [9]. Its note
-commitments and Merkle tree use a different hash, Sinsemilla. Halo showed
-recursive proofs without a trusted setup on this cycle [10].
+commitments and Merkle tree use a different hash, Sinsemilla. Halo first showed
+practical recursive proofs without a trusted setup, on a cycle of ordinary
+elliptic curves [10].
 
 **Folding and IVC.** Nova folds repeated instances of one circuit into a single
 running instance [11]. SuperNova lets each step run one of several circuits,
 paying only for the one it runs [12]. HyperNova generalises the approach [13].
-A 2023 analysis found a soundness flaw in Nova's original cycle-of-curves
-implementation and proved a fixed version secure [14]; CycleFold is a later
-design for the same job [15]. Spartan provides transparent SNARKs used to
-compress folded proofs [16]. Poseidon is the in-circuit hash [17].
+ProtoStar builds folding schemes for a wider class of protocols and also
+supports non-uniform steps [30]; we did not build on it. A 2023 analysis found a
+soundness flaw in Nova's original cycle-of-curves implementation and proved a
+fixed version secure [14]; CycleFold is a later design for the same job [15].
+Spartan provides transparent SNARKs used to compress folded proofs [16].
+Poseidon is the in-circuit hash [17].
 
 **zkVMs.** SP1 [18], the RISC Zero zkVM [19] and Jolt [20] prove arbitrary
 programs. They buy generality we do not need. We expect a fixed relation to be
@@ -188,17 +207,25 @@ They prove facts about one network session, not about a task that spans many
 tools and sessions.
 
 **Hardware attestation.** Trusted execution environments attest to a runtime's
-measured state. They rest on the hardware vendor and give the verifier no
-cryptographic privacy. They complement this work.
+measured state. An enclave can keep inputs private and release only a result.
+That privacy rests on the hardware vendor and the enclave code, not on a proof.
+They complement this work.
 
 **Logs.** Certificate Transparency [23, 24] made signed, gossiped Merkle logs
-practical. We use its gossip idea as a mitigation (Section 8).
+practical. We use its gossip idea as a mitigation (Section 8). CONIKS brought
+such logs to user keys. Its clients check that a provider shows everyone the
+same log [34].
+
+**Private audits.** In zkLedger, an auditor queries a private ledger, and the
+banks cannot hide transactions from the audit [35]. Our audit mode aims at the
+same completeness with a simpler tool, a per-account log, and it trusts the
+issuer to log every receipt (Section 6).
 
 **Agent records in zero knowledge.** Three 2026 works apply zero-knowledge
 proofs to records of AI agents, as we do. ZK-Receipt [26] has a provider sign a
 credential for one AI interaction. The holder then proves in zero knowledge that
 an authorized provider and model signed it, without showing the prompt or the
-response. Its prototype uses Circom and Groth16. AgentProof [27] is an
+response. Its prototype uses Circom and Groth16 [29]. AgentProof [27] is an
 open-source proof of concept. It uses Groth16 to prove that a log of at most
 eight tool calls follows a small set of rules. Authorization Without
 Disclosure [28] proposes a zero-knowledge proof over an authorization decision
@@ -208,12 +235,12 @@ to 1,000 entries with no trusted setup, and we publish measurements.
 
 | Approach | What it proves | Rests on | Gap for agent records |
 |---|---|---|---|
-| Issuer-signed compliance | one fixed policy | issuer | policy fixed at issuance; issuer sees every check |
-| BBS+ / CL credentials | predicates over signed attributes | issuer | no log membership; no cross-verifier replay detection |
+| Issuer-signed compliance | one fixed policy | issuer | policy fixed at issuance; a new policy needs the issuer again |
+| BBS+ / CL credentials | predicates over signed attributes | issuer | base schemes have no log membership and no per-task transcript check |
 | zk-creds | membership and predicates over logged credentials | log, proof system | no per-task transcript or folded policy check |
 | zkVM | any computation | proof system | general-purpose cost (measured on CPU for this relation in Section 9) |
 | TLS attestation | facts about one TLS session | notary or verifier, TLS | no task, log or policy structure |
-| TEE attestation | a measured runtime | hardware vendor | no privacy from the verifier |
+| TEE attestation | a measured runtime | hardware vendor, enclave code | privacy rests on trusted hardware and enclave code, not on a proof |
 | Signed Agent Receipt v0.2 | signature and log membership | issuer, log signer | full disclosure |
 
 ## 4. Setting and trust model
@@ -265,6 +292,14 @@ that starts from the task binding and absorbs each entry with its position.
 The issuer computes the final value and signs it in `S`. The holder keeps the
 entries. Changing, dropping or reordering any entry changes the final value.
 
+Our circuit ties `task_binding` to the run only through that signed value. The
+prover supplies the task binding that starts the chain, and the chain must end
+at the value the issuer signed. An honest issuer builds the chain from the
+`task_binding` in `S`, so a different start would need a hash collision. An
+issuer that signs a chain built from some other task binding is not caught by
+the proof. The RISC Zero guest rebuilds the chain from the signed
+`task_binding`, so it is stricter on this one point.
+
 ### 5.3 The policy
 A policy is an allowlist of tool digests (the root of a depth-16 Merkle tree),
 an egress flag and a payment bound. Its Poseidon commitment is public. The
@@ -281,7 +316,10 @@ log; records need fresh issuance.
 The holder picks a fresh random nullifier key `nk` for each receipt and a
 random `r`, and sends only the commitment `H(nk, r)` to the issuer. Reusing
 `nk` across receipts would turn the nullifier into a pseudonym for the holder,
-so the profile forbids it. The issuer builds and signs `S`, and
+so the profile forbids it. The issuer sees only the commitment, so it cannot
+check this rule. A holder who breaks it harms their own receipts: under one
+scope, two of them give the same value, and the second looks like a replay.
+The issuer builds and signs `S`, and
 the leaf goes into the log. The issuer never sees `nk`. An issuer must not sign
 two statements for one task; nothing in the design can detect it if one does.
 
@@ -310,8 +348,9 @@ branches of one circuit with 60,301 application constraints. Every fold runs
 all three branches. The `pc` value and a final flag select the result. Every
 fold therefore pays for the signature and log-membership constraints, even
 though their branch is selected only once. This costs more than the SuperNova
-design and makes our timings an upper bound for that design. It also avoids
-the open question of SuperNova's security on a curve cycle (Section 7).
+design, so we expect our timings to be an upper bound for that design. We did
+not build it, so we cannot confirm this. The uniform circuit also avoids the
+open question of SuperNova's security on a curve cycle (Section 7).
 
 The prover pads the fold count to the next power of two at or above `T + 2`.
 The presented proof is a CompressedSNARK: Spartan with IPA on both curves.
@@ -333,13 +372,14 @@ cite that figure as an estimate of scale; we have not measured our own.
 Profile a was not built, so we report no measurement for its final circuit.
 
 **Zero knowledge.** Folding alone does not hide the witness. Before compression,
-the prover must fold in a random satisfying instance and compress with a
-zero-knowledge SNARK, as Nova and HyperNova describe [11, 13]. The reference
-prover calls nova-snark's CompressedSNARK. We inspected that code: it samples
-and folds random satisfying instances on both curves before Spartan
-compression. The presentation API also samples fresh accumulator blinding from
-the operating system for every proof. This is the implemented zero-knowledge
-construction, not an independent security proof.
+the prover must fold in a random satisfying instance, as Nova and HyperNova
+describe [11, 13]. That fold is what hides the witness. We rely on those papers
+for the argument; we did not prove it again. The reference prover calls
+nova-snark's CompressedSNARK. We inspected that code: it samples and folds
+random satisfying instances on both curves before Spartan compression. The
+presentation API also samples fresh accumulator blinding from the operating
+system for every proof. This is the implemented zero-knowledge construction, not
+an independent security proof.
 
 ## 6. Nullifiers
 
@@ -357,8 +397,10 @@ example a hash of its own identifier and the audit's purpose.
   two presentations. A verifier that wants no replay detection at all uses a
   fresh random scope each time.
 - **Replay detection is best effort.** It catches accidental reuse and naive
-  replay. A holder caught repeating a receipt can claim the issuer reissued it,
-  and outside audit mode no one can tell.
+  replay. If the issuer signs the same task again under a new nullifier key,
+  the second receipt gives a new value and no repeat shows. If it signs again
+  under the same key, a repeat shows, and the holder can say it is the second
+  receipt, not a replay. Outside audit mode no one can tell.
 - **The log position does not matter.** If the log index were part of the
   nullifier, the same record logged twice would yield two values and slip past
   replay checks. The nullifier depends only on `nk` and the scope, so this
@@ -388,7 +430,9 @@ This is a sketch, not a proof.
   proof for its composition with a cycle of curves. Nguyen, Boneh and Setty
   proved a repaired Nova on a cycle [14], and CycleFold gives a general route
   [15]. Neither covers SuperNova directly. The built uniform instantiation does
-  not claim that composition; it relies on Nova's cycle argument instead. Both
+  not claim that composition. It relies on the repaired Nova cycle argument of
+  [14]. The nova-snark documentation says that the library implements that
+  instantiation; we did not audit the library. Both
   designs also rest on collision resistance of Poseidon over the Pallas base
   field, for the transcript, the tree and the commitments; binding of the
   nullifier-key commitment, which follows from collision resistance; and
@@ -452,26 +496,30 @@ demonstrate neither witness privacy nor anonymity. Log leaves are not an
 anonymity-set claim.
 
 **Many questions.** Each presentation tells the verifier one bit: the record
-meets this policy. A refusal tells it the same bit. Zero knowledge adds nothing
-beyond that bit, but the bits add up. After `Q` policies the verifier has at
-most `Q` bits, and nothing stops those bits from pointing to a single record.
-With a free choice of policy, an auditor can ask "does the allowlist without
-tool D still pass?" once per tool, find the exact payment count with about 32
-payment bounds, and learn the egress flag in one question. So the holder's
-wallet, not the circuit, must limit what it answers. It proves only against
-approved policy classes: allowlists from a registry and a short list of coarse
-payment bounds. It asks the auditor to commit in advance to the list of
-policies for an audit. And it keeps a budget per receipt, by default one policy
-per audit, in which refusals count. No one control suffices; together they
-bound the leak, and reports should state how many policies each record
-answered.
+meets this policy. A refusal can tell it something too, though a holder may also
+refuse because a budget ran out or the policy is not approved. Zero knowledge
+adds nothing beyond that bit, but the bits add up. After `Q` policies the
+verifier has at most `Q` bits from the answers themselves, and nothing stops
+those bits from pointing to a single record. This count leaves out what timing,
+error messages and the public inputs may add. With a free choice of policy, an
+auditor can ask "does the allowlist without tool D still pass?" once per tool,
+find the exact payment count with about 32 payment bounds, and learn the egress
+flag in one question. So the holder's wallet, not the circuit, must limit what
+it answers. It proves only against approved policy classes: allowlists from a
+registry and a short list of coarse payment bounds. It asks the auditor to
+commit in advance to the list of policies for an audit. And it keeps a budget
+per receipt, by default one policy per audit, in which refusals count. No one
+control suffices; together they bound the leak, and reports should state how
+many policies each record answered. The specification requires these controls.
+The reference code has no wallet, so none of them is built or tested here.
 
 ## 9. Experiment and results
 
-### 9.1 Pre-registered design
+### 9.1 Design stated in advance
 
 The following design and hypotheses were stated before measurement. Their
-wording is unchanged.
+wording is unchanged. This is our own account: we did not register them with a
+third party, and this repository's history starts after the measurements.
 
 We will build profile b first and measure it.
 
@@ -523,12 +571,20 @@ container framing. The direct Spartan APIs used for monolithic and per-entry
 proving do not perform the random satisfying-instance fold. We claim no zero
 knowledge for those baselines. They also omit privacy padding.
 
-The RISC Zero guest checks the same relation. It uses the bigint2 accelerator
-for Pallas arithmetic and embedded Poseidon constants. It does not implement
-folding, the outer Ed25519 log-head check, replay storage or the full receipt
-wire protocol. Its host checks the receipt against the expected journal. RISC
-Zero proves arbitrary programs; our prover handles one fixed relation. That
-generality is part of what the baseline pays for.
+The RISC Zero guest checks the same relation, with one difference: it rebuilds
+the chain from the signed task binding, so it is stricter on that point
+(Section 5.2). The two provers ran test records
+of the same length but not the same content. Both mix tool, file, payment and
+egress entries. Ours repeats one approved tool, sets the payment bound to the
+run length, and uses a log of 16 signed leaves. The baseline uses 3, 25 and 250
+distinct tools, sets the payment bound to the payment count plus one, and has
+logs of 13, 103 and 1,003 leaves. The speed factors below are therefore ratios
+observed on these two sets of records, not on one shared input. The guest uses
+the bigint2 accelerator for Pallas arithmetic and embedded Poseidon constants.
+It does not implement folding, the outer Ed25519 log-head check, replay storage
+or the full receipt wire protocol. Its host checks the receipt against the
+expected journal. RISC Zero proves arbitrary programs; our prover handles one
+fixed relation. That generality is part of what the baseline pays for.
 
 RISC Zero used `ProverOpts::default()` for composite receipts and
 `ProverOpts::succinct()` for succinct receipts. At `T = 10`, each mode had three
@@ -541,13 +597,16 @@ serialization, verification and artifact I/O. RISC Zero setup is not separately
 measured. Verification runs after proving in the same process and may benefit
 from warm caches.
 
-RISC Zero proved the `T = 1,000` case once, in composite mode. Other programs
-shared the CPU during that run. We sampled the load every five minutes with
-`ps`. Over 97 samples, the prover held a mean of 1,620% CPU out of 1,800%.
-Other programs took a mean of 102%, with a peak of 706%. Shared load makes RISC
-Zero slower, so this run favours our system by an amount we cannot state. We
-made the other runs, ours and RISC Zero's, with no other heavy work on the
-machine, but we kept no load log for them.
+RISC Zero proved the `T = 1,000` case once, in composite mode. We stopped one
+earlier attempt after 47 minutes, because another job took a large share of the
+CPU. It produced no proof and no timing. Other programs also shared the CPU
+during the run that we report. We sampled the load every five minutes with `ps`.
+Over the 97 samples taken after launch, the prover held a mean of 1,620% CPU out
+of 1,800%. The log's first line is the sample at launch. Other programs took a
+mean of 102%, with a peak of 706%. Shared load makes RISC Zero slower, so this
+run favours our system by an amount we cannot state. We made the other runs,
+ours and RISC Zero's, with no other heavy work on the machine, but we kept no
+load log for them.
 
 RISC Zero did not prove the succinct `T = 1,000` case. For that mode, we draw a
 straight line in total cycles through the `T = 10` median and the `T = 100`
@@ -555,8 +614,10 @@ run, then evaluate it at 749,207,552 cycles. An execution-only run and the
 composite proof run both report that count. Only the succinct `T = 1,000`
 proving time is an estimate. We do not estimate its other missing metrics.
 
-Both systems ran on the same CPU. RISC Zero 3.0.6's Apple Metal path is
-disabled in its source, and we did not test CUDA. A GPU would cut RISC Zero's
+Both systems ran on the same CPU. RISC Zero 3.0.6's Apple Metal path is disabled
+in its source, and we did not test CUDA. Our build also replaces the unused
+Metal asset with an empty file, because the machine lacked Apple's Metal build
+tools; the baseline README gives the details. We expect a GPU to cut RISC Zero's
 proving time substantially; these measurements cannot say by how much.
 
 Native verification times cover the SNARK checks and output comparison. They
@@ -567,7 +628,8 @@ therefore core-proof comparisons, not full sealed-receipt request timings.
 ### 9.3 Native results
 
 Times are medians of three fresh-process runs. Verification is in milliseconds;
-peak RSS is in bytes.
+peak RSS is in bytes. Cells are rounded to the nearest last digit; the raw
+records hold the exact values.
 
 | System | T | Setup (s) | Prove (s) | Verify (ms) | Proof bytes | Peak RSS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -586,12 +648,12 @@ proof is larger than the monolithic proof, and its peak memory is higher than
 per-entry proving. At `T = 1,000`, monolithic setup takes 405.149895 s, peak
 RSS reaches 70,747,422,720 bytes (about 70.7 GB), and verification takes
 4.917643 s. These are not hidden costs of the folded system, but they show why
-the comparison includes setup and memory as well as proof time.
+the table reports setup and memory as well as proving time.
 
 ### 9.4 RISC Zero results
 
 At `T = 10`, each value is the median of three runs. At `T = 100`, it is the
-single completed run. At `T = 1,000`, the composite row is one run on a
+one run that we made. At `T = 1,000`, the composite row is one run on a
 machine in use (Section 9.2). The succinct proving time is an estimate, not a
 measurement. A dash means that no proof metric was measured.
 
@@ -601,8 +663,8 @@ measurement. A dash means that no proof metric was measured.
 | 10 | succinct | 3 | 955.412304042 | 8.975834 | 225,018 | 11,206,459,392 | 20,971,520 |
 | 100 | composite | 1 | 3,311.618415375 | 879.667333 | 22,225,718 | 11,186,831,360 | 82,837,504 |
 | 100 | succinct | 1 | 4,087.643700459 | 9.063584 | 225,018 | 11,208,867,840 | 82,837,504 |
-| 1,000 | composite | 1 | 29,316.134718709 | 7,674.066292 | 201,128,174 | 14,368,112,640 | 749,207,552 |
-| 1,000 | succinct | 0 | 37,825.493 (estimate) | — | — | — | 749,207,552 |
+| 1,000 | composite | 1 (machine in use) | 29,316.134718709 | 7,674.066292 | 201,128,174 | 14,368,112,640 | 749,207,552 |
+| 1,000 | succinct | 0 | 37,825.492 (estimate) | — | — | — | 749,207,552 |
 
 The succinct estimate uses the displayed, unrounded inputs:
 
@@ -628,26 +690,36 @@ The measured composite time, 29,316.134 s, is 3.6% lower than that estimate,
 even with the shared load. The straight line overstated the composite time, so
 the succinct estimate may be too high in the same way.
 
-RISC Zero's succinct receipt verifies in about 9 ms, faster than our roughly
-64 ms. Its receipt is 225,018 bytes against our 11,784 bytes. We lose on
-verification speed and win on proof size in this comparison. The composite
-receipt grows with the run. At `T = 1,000` it is 201,128,174 bytes and takes
-7.674 s to verify.
+At the two sizes where we measured it, 10 and 100 entries, RISC Zero's succinct
+receipt verifies in about 9 ms, faster than our roughly 64 ms. Its receipt is
+225,018 bytes against our 11,784 bytes. We lose on verification speed and win on
+proof size in this comparison. The composite receipt grows with the run. At `T =
+1,000` it is 201,128,174 bytes and takes 7.674 s to verify.
 
 ### 9.5 Hypothesis verdicts
 
 - **H1: supported by the measurements.** Folded proof size is 11,784 bytes at
-  all three sizes. Median verification stays between 59.950 and 64.204 ms from
-  10 to 1,000 entries. This is a result for these fixtures and this machine,
-  not a proof about every run length.
+  all three sizes. Median verification stays between 59.9 and 64.3 ms from
+  10 to 1,000 entries. We set no tolerance for "flat" in advance; the highest
+  median is about 7% above the lowest. This is a result for these fixtures and this machine,
+  not a proof about every run length. The hypothesis said a failure would
+  mean an implementation error. That was too strong: timing noise alone
+  could also break flatness.
 - **H2: supported by the measurements.** Against composite RISC Zero, folded
   proving is 163.100 times faster at `T = 10`, 216.483 times faster at
-  `T = 100` and 308.831 times faster at `T = 1,000`. The `T = 1,000` factor
-  comes from one RISC Zero run on a machine in use, so a quiet machine would
-  give a lower factor. The prover still held a mean of 90% of the CPU, so the
-  load cannot explain a factor of this size. The corresponding succinct factors
-  are 195.928, 267.212 and an estimated 398.473. All exceed the pre-registered
-  factor of ten. All results are CPU-only.
+  `T = 100` and 308.831 times faster at `T = 1,000`. The `T = 100` and
+  `T = 1,000` factors each come from one RISC Zero run, so we have no
+  run-to-run spread for them. The `T = 1,000` run was on a machine in use, so
+  a quiet machine would give a lower factor. One run cannot bound the effect
+  of the load. The prover held a mean of 90% of the CPU, and the `T = 100`
+  run, made without that load, already gives a factor of about 216. We
+  therefore do not expect the load to change the verdict. The corresponding
+  succinct factors are 195.928, 267.212 and an estimated 398.473. We cut every
+  factor to three decimal places and never round one up. All exceed
+  the factor of ten stated in advance. H2 said "on the same relation" and named
+  no hardware. What we tested is narrower: the guest is stricter on the task
+  binding, the two provers ran different test records (Section 9.2), and all
+  results are CPU-only. The verdict holds for that test.
 - **H3: not testable as written.** Uniform Nova has no separate final circuit
   in the measured implementation. Every fold includes all three branches. We
   have not rewritten the hypothesis after the fact. The closest measured
@@ -656,13 +728,14 @@ receipt grows with the run. At `T = 1,000` it is 201,128,174 bytes and takes
 The H3 comparison uses the padded fold counts 16, 128 and 1,024. Per-fold time
 is recursive time divided by fold count. The last column is compression time
 divided by that per-fold time. These ratios combine independently reported
-medians; they are descriptive arithmetic, not new measurements.
+medians; they are descriptive arithmetic, not new measurements. We computed them
+from the rounded values shown.
 
 | T | Folds | Recursive (s) | Recursive per fold (ms) | Compression (s) | Compression / per-fold (folds) |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 10 | 16 | 1.467377 | 91.711063 | 3.375707 | 36.808068 |
 | 100 | 128 | 11.438193 | 89.360883 | 3.805185 | 42.582223 |
-| 1,000 | 1,024 | 91.511533 | 89.366732 | 3.414359 | 38.206153 |
+| 1,000 | 1,024 | 91.511533 | 89.366731 | 3.414359 | 38.206153 |
 
 For example, at `T = 100`, `11.438193 / 128 = 0.0893608828125` s per fold and
 `3.805185 / 0.0893608828125 = 42.582222559...` folds. The other rows use the
@@ -693,7 +766,8 @@ results because its Ed25519 final circuit was not built.
   chaining and is deliberately cheaper than one. The direct baselines omit
   privacy padding and the random satisfying-instance fold, so they do not have
   the folded system's zero-knowledge guarantee.
-- The fixtures are synthetic and use fixed inventory mixes. The native
+- The fixtures are synthetic and use fixed inventory mixes. The two provers
+  did not run one shared input (Section 9.2). The native
   candidate count is a weak structural count of 16, and its recorded seed
   exposes the witnesses. These runs demonstrate neither deployment anonymity
   nor witness privacy.
@@ -719,19 +793,22 @@ results because its Ed25519 final circuit was not built.
    two nullifiers. Only issuance discipline prevents this; audit mode at least
    makes the extra receipt visible.
 7. Outside audit mode, the holder chooses which receipts to show.
-8. Each answered or refused policy can leak one bit. Wallet controls limit
-   this; the circuit cannot.
+8. Each answered policy leaks one bit, and a refusal can leak too. The wallet
+   controls that limit this are required by the specification but not built
+   here; the circuit cannot limit it.
 9. The issuer labels each entry's kind. An issuer that records data sent
    outside as a file entry makes "nothing sent outside" pass.
 10. Policies count payments but cannot cap their value, check payees or bound
     time. These are future work.
 11. The measured uniform prover repeats every branch on every fold. The cheaper
     SuperNova design and profile a remain unbuilt and unmeasured.
-12. The comparison uses synthetic fixtures and one CPU. The 1,000-entry
+12. The comparison uses synthetic fixtures and one CPU. The two provers ran
+    test records of the same length but not the same content. The 1,000-entry
     composite RISC Zero time is one run under shared load, the succinct time is
     an estimate, and GPU proving is unmeasured.
 13. Folded proving is not best on every metric. RISC Zero's succinct receipt
-    verifies in about 9 ms against our roughly 64 ms, but it is 225,018 bytes
+    verifies in about 9 ms (measured at 10 and 100 entries) against our roughly
+    64 ms, but it is 225,018 bytes
     against our 11,784 bytes. The monolithic proof is smaller, and per-entry
     proving uses less peak memory in these runs.
 
@@ -747,7 +824,7 @@ results because its Ed25519 final circuit was not built.
 | Replay within a scope is detected | Implemented with an atomic replay set; best effort, and a holder can claim reissue | Section 6 |
 | Nullifier values are unlinkable across scopes | Argued, under the PRF assumption; whole presentations may still link | Section 6 |
 | Audit mode shows every receipt of an account was presented | Argued; trusts the issuer to log every receipt | Section 6 |
-| Faster than a zkVM on this relation | Measured at 10, 100 and 1,000; the 1,000 run is one run on a machine in use; CPU only | Section 9, H2 |
+| Faster than a zkVM on this relation | Measured at 10, 100 and 1,000, on test records of the same length but not one shared input; the 1,000 run is one run on a machine in use; CPU only | Section 9, H2 |
 | Timings and sizes | Measured for profile b and the baselines; RISC Zero succinct proving at 1,000 is estimated | Section 9 |
 | Candidate-set sizes | 16 synthetic native candidates; weak structural count, not deployment anonymity; zkVM candidate set unknown | Sections 8 and 9 |
 
@@ -765,7 +842,7 @@ results because its Ed25519 final circuit was not built.
 10. S. Bowe, J. Grigg and D. Hopwood. "Recursive Proof Composition without a Trusted Setup." ePrint 2019/1021.
 11. A. Kothapalli, S. Setty and I. Tzialla. "Nova: Recursive Zero-Knowledge Arguments from Folding Schemes." CRYPTO 2022. ePrint 2021/370.
 12. A. Kothapalli and S. Setty. "SuperNova: Proving Universal Machine Executions without Universal Circuits." ePrint 2022/1758.
-13. A. Kothapalli and S. Setty. "HyperNova: Recursive Arguments for Customizable Constraint Systems." ePrint 2023/573.
+13. A. Kothapalli and S. Setty. "HyperNova: Recursive Arguments for Customizable Constraint Systems." CRYPTO 2024. ePrint 2023/573.
 14. W. Nguyen, D. Boneh and S. Setty. "Revisiting the Nova Proof System on a Cycle of Curves." AFT 2023. ePrint 2023/969.
 15. A. Kothapalli and S. Setty. "CycleFold: Folding-scheme-based Recursive Arguments over a Cycle of Elliptic Curves." ePrint 2023/1192.
 16. S. Setty. "Spartan: Efficient and General-Purpose zkSNARKs without Trusted Setup." CRYPTO 2020. ePrint 2019/550.
@@ -781,3 +858,10 @@ results because its Ed25519 final circuit was not built.
 26. A. Emami Neishabouri, A. Sartipi, J. Schönrich and I. Tchappi. "ZK-Receipt: Privacy-Preserving Verifiable Provenance for Intermediated AI Services." Workshop "Who Verifies the Agents? Toward Reliable Agent Development", NeurIPS 2026. https://neurips.cc/virtual/2026/172956
 27. *AgentProof: zero-knowledge verification of AI agent policy compliance* (proof of concept). 2026. https://github.com/dvelton/agentproof
 28. A. Hasbini. *Authorization Without Disclosure: An advisory reference architecture for non-disclosing agent-to-agent authorization.* Version 1.1, 2026. doi:10.5281/zenodo.23515310
+29. J. Groth. "On the Size of Pairing-Based Non-interactive Arguments." EUROCRYPT 2016. ePrint 2016/260.
+30. B. Bünz and B. Chen. "ProtoStar: Generic Efficient Accumulation/Folding for Special Sound Protocols." ASIACRYPT 2023. ePrint 2023/620.
+31. F. Baldimtsi, K. K. Chalkias, Y. Ji, J. Lindstrøm, D. Maram, B. Riva, A. Roy, M. Sedaghat and J. Wang. "zkLogin: Privacy-Preserving Blockchain Authentication with Existing Credentials." ACM CCS 2024. arXiv:2401.11735.
+32. A. Lysyanskaya, R. L. Rivest, A. Sahai and S. Wolf. "Pseudonym Systems." Selected Areas in Cryptography (SAC) 1999. LNCS 1758, pp. 184–199.
+33. J. Camenisch, S. Hohenberger and A. Lysyanskaya. "Compact E-Cash." EUROCRYPT 2005. LNCS 3494, pp. 302–321.
+34. M. S. Melara, A. Blankstein, J. Bonneau, E. W. Felten and M. J. Freedman. "CONIKS: Bringing Key Transparency to End Users." USENIX Security 2015.
+35. N. Narula, W. Vasquez and M. Virza. "zkLedger: Privacy-Preserving Auditing for Distributed Ledgers." USENIX NSDI 2018.

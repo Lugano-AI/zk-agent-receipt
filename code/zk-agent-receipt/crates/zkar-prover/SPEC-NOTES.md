@@ -157,8 +157,9 @@ Residual dependencies, stated so a reader can audit them:
 - **The on-curve constraint is load-bearing.** With an off-curve key or `R`,
   the group equation can hold on the arithmetic fallback; only the on-curve
   constraint rejects it. Keep its regression tests.
-- **Inactive branches carry real witnesses.** The honest prover fills every
-  inactive branch with its real witness on every fold. This is sound, but
+- **Inactive branches carry real witnesses.** On every fold, each inactive
+  branch runs on a fallback input state (spec §9.1). The honest prover pairs
+  that state with the branch's real witness. This is sound, but
   recursive (uncompressed) proofs reveal witnesses and must never leave the
   prover. Only compressed proofs are presentation artifacts.
 - **Cost, not soundness.** The policy opening is re-checked and some values

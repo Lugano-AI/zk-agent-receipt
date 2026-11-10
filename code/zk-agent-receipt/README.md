@@ -22,8 +22,13 @@ cargo run --target aarch64-apple-darwin -j 8 -p zkar-cli -- fixtures out
 cargo run --target aarch64-apple-darwin -j 8 -p zkar-cli -- check out/sealed-receipt-0.json --trust out/log-trust.json
 ```
 
-The last command prints `LOG HEAD SIGNATURE OK; PROOF NOT VERIFIED` and exits
+The last command prints `LOG HEAD SIGNATURE OK; PROOF NOT CHECKED` and exits
 with code 2.
+
+The first command runs the fast tests. The repository's CI runs only that
+command and the lint. The second command runs the six tests that make and
+check real proofs. They need a release build and several minutes, so run them
+yourself before you rely on a change to the prover.
 
 ## What the code does today
 
@@ -79,12 +84,17 @@ Exit codes for receipt checking:
 - 2: the schema and the log head signature passed, but the proof was NOT verified;
 - 3: the schema passed, and nothing cryptographic was checked;
 - 4: a valid receipt repeats a stored scope/nullifier pair (`ReplaySuspected`);
-- 64: bad command line.
+- 64: bad command line (an unknown command, a missing or extra argument, or an
+  argument that is not valid UTF-8).
 
 Receipt/trust JSON inputs are limited to 128 KiB: a 64 KiB compressed proof
 requires 87,382 unpadded base64url characters before JSON metadata. Decoded
 proofs are capped at 64 KiB; bincode trailing bytes are rejected. Verification
 key files are capped at 128 MiB because they contain the full constraint shape.
+
+The proof library can panic on a proof whose inner vectors have the wrong
+length. The verifier catches that panic and rejects the receipt. Do not build
+it with `panic = "abort"`: the process would stop instead.
 
 Full verification requires independently selected expected commitments and a
 persistent replay file. Pin the digest through a trusted channel; never accept
@@ -102,6 +112,9 @@ cargo run --release --target aarch64-apple-darwin -j 8 -p zkar-cli -- verify rec
 The append-only replay file is locked exclusively across lookup and durable
 insertion. Lock, read, corruption, and write failures reject verification. Keep
 the file in verifier-controlled storage; deleting it discards replay history.
+If the file disappears while the verifier runs, the next check fails. Each
+check reads the whole file, so the cost grows with the number of stored pairs.
+A busy verifier needs an indexed store.
 Two presentations of one issued receipt retain the same scoped nullifier even
 though their accumulator blinding and compressed proof randomness are fresh.
 

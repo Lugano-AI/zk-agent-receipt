@@ -259,6 +259,10 @@ impl Fixture {
 
     /// Full padded fixed-shape trace: start, every real entry, padding up to
     /// `next_power_of_two(T + 2)`, then final.
+    ///
+    /// The trace keeps this fixture's own blinding value. Use it for setup,
+    /// tests and benchmarks. To make a receipt, call `present`, which draws a
+    /// fresh blinding value each time.
     pub fn uniform_steps(&self) -> Vec<TraceStep<UniformCircuit>> {
         let mut trace = Vec::with_capacity(self.entries.len() + self.padding_steps + 2);
         let fallback = self.fallbacks();

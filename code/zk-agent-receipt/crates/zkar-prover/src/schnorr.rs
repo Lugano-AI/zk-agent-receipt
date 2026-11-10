@@ -140,6 +140,10 @@ pub fn sign_with_nonce(secret_key: Scalar, nonce: Scalar, message: F) -> Signatu
 }
 
 /// Native profile-b verification, including all strict input checks.
+///
+/// The `s < q` check of spec §3.4 holds by type here: `Signature::s` is a
+/// scalar-field element, so it is always reduced. Code that builds a
+/// `Signature` from bytes must reject a non-canonical `s` first.
 pub fn verify_native(public_key: PallasPoint, signature: Signature, message: F) -> bool {
     if public_key.is_identity
         || signature.r.is_identity

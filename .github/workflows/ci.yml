@@ -1,0 +1,40 @@
+name: CI
+
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Linux tests are omitted because zkar-bench contains macOS-specific code.
+# This job runs the fast tests and the lint. It does not run the six ignored
+# tests that make and check real proofs, or the zkVM baseline workspace. The
+# README gives the command for the real-proof tests.
+jobs:
+  test:
+    name: macOS arm64 workspace checks
+    runs-on: macos-15 # arm64 GitHub-hosted runner
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: code/zk-agent-receipt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust 1.94.0
+        run: rustup toolchain install 1.94.0 --profile minimal --component clippy --target aarch64-apple-darwin
+      - name: Confirm Rust toolchain
+        run: rustup run 1.94.0 rustc --version
+      - name: Test locked workspace
+        run: rustup run 1.94.0 cargo test --locked --target aarch64-apple-darwin -j 8 --workspace
+      - name: Lint workspace
+        run: rustup run 1.94.0 cargo clippy --workspace --all-targets --locked -- -D warnings

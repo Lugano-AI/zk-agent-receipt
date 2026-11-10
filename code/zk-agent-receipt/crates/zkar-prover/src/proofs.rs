@@ -52,11 +52,18 @@ const VK_DIGEST_LABEL: &[u8] = b"SAR-ZK-vk-digest-v0.4\0";
 pub fn vk_digest<C: StepCircuit<F>>(
     vk: &CompressionVerifierKey<C>,
 ) -> Result<[u8; 32], bincode::error::EncodeError> {
+    Ok(encoded_vk_digest(&encode(vk)?))
+}
+
+/// The same digest, taken over the bytes of an encoded key. A loader checks
+/// it before it decodes a key file, so it never decodes a file that is not
+/// the pinned key.
+pub fn encoded_vk_digest(bytes: &[u8]) -> [u8; 32] {
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(VK_DIGEST_LABEL);
-    hasher.update(encode(vk)?);
-    Ok(hasher.finalize().into())
+    hasher.update(bytes);
+    hasher.finalize().into()
 }
 
 /// A verification key checked once, at load time, against a digest the
@@ -113,7 +120,14 @@ pub fn verify<C: StepCircuit<F>>(
     let mut expected = initial.clone();
     expected[0] = F::from(2);
     expected[8] = nullifier;
-    let actual = proof.verify(&vk.vk, folds, &initial)?;
+    // nova-snark 0.76.0 indexes some proof vectors without a length check. A
+    // proof that decodes but has a vector of the wrong length makes the
+    // library panic. Report that as a rejection. This relies on the default
+    // unwinding panic strategy; do not build a verifier with `panic = "abort"`.
+    let actual = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        proof.verify(&vk.vk, folds, &initial)
+    }))
+    .map_err(|_| invalid("the proof has a malformed shape"))??;
     if actual != expected {
         return Err(invalid("final state must be HALT, zero accumulator, unchanged public binding, expected nullifier"));
     }

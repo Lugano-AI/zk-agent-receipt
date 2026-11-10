@@ -3,7 +3,7 @@
 
 use std::process::ExitCode;
 use zkar_prover::{
-    proofs::{Compressed, CompressionVerifierKey, PinnedVerifierKey},
+    proofs::{self, Compressed, CompressionVerifierKey, PinnedVerifierKey},
     relation::UniformCircuit,
     replay::FileReplaySet,
     sealed::{self, Outcome, TrustAnchor},
@@ -51,7 +51,18 @@ const MAX_INPUT_BYTES: u64 = 128 * 1024;
 const MAX_VK_BYTES: u64 = 128 * 1024 * 1024;
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().collect();
+    // `std::env::args` panics on an argument that is not valid UTF-8. Treat
+    // that as a bad command line instead.
+    let mut args = Vec::new();
+    for arg in std::env::args_os() {
+        match arg.into_string() {
+            Ok(arg) => args.push(arg),
+            Err(_) => {
+                eprintln!("every argument must be valid UTF-8");
+                return ExitCode::from(USAGE_ERROR);
+            }
+        }
+    }
     match args.get(1).map(String::as_str) {
         Some("check") => cmd_check(&args),
         Some("verify") => cmd_verify(&args),
@@ -121,7 +132,7 @@ fn cmd_check(args: &[String]) -> ExitCode {
         match verify_trusted_head(&receipt, path) {
             Ok(()) => {
                 println!(
-                    "LOG HEAD SIGNATURE OK; PROOF NOT VERIFIED. This is not a sealed check pass."
+                    "LOG HEAD SIGNATURE OK; PROOF NOT CHECKED. This is not a sealed check pass."
                 );
                 ExitCode::from(PARTIAL)
             }
@@ -194,7 +205,7 @@ fn cmd_verify(args: &[String]) -> ExitCode {
             ExitCode::SUCCESS
         }
         Ok(Outcome::ReplaySuspected) => {
-            eprintln!("SEALED CHECK REPLAY SUSPECTED");
+            eprintln!("SEALED REPLAY SUSPECTED");
             ExitCode::from(REPLAY_SUSPECTED)
         }
         Err(error) => {
@@ -219,6 +230,10 @@ fn verify_command(
     let receipt = zkar_core::statement::SealedReceipt::parse(&json).map_err(|e| e.to_string())?;
     let pinned_digest = sealed::decode_digest(digest).map_err(|e| e.to_string())?;
     let vk_bytes = read_bytes(vk_path, MAX_VK_BYTES)?;
+    // Check the pinned digest over the file bytes before the decoder reads them.
+    if proofs::encoded_vk_digest(&vk_bytes) != pinned_digest {
+        return Err("verification key does not match the pinned digest".to_owned());
+    }
     let (raw_vk, consumed): (CompressionVerifierKey<UniformCircuit>, usize) =
         bincode::serde::decode_from_slice(&vk_bytes, bincode::config::legacy())
             .map_err(|e| format!("cannot decode verification key: {e}"))?;
@@ -265,7 +280,7 @@ fn cmd_keygen(args: &[String]) -> ExitCode {
 }
 
 fn write_verification_key(dir: &str) -> Result<String, String> {
-    use zkar_prover::{issuance::Fixture, proofs};
+    use zkar_prover::issuance::Fixture;
 
     let fixture = Fixture::benchmark_deterministic(1, 1, 0, 0x5341525a4b)
         .map_err(|error| error.to_string())?;
@@ -396,13 +411,11 @@ fn decode_b64url(value: &str) -> Result<Vec<u8>, String> {
 }
 
 fn cmd_digest(args: &[String]) -> ExitCode {
-    let path = match args.get(2) {
-        Some(path) => path,
-        None => {
-            eprintln!("digest requires a file argument");
-            return ExitCode::FAILURE;
-        }
-    };
+    if args.len() != 3 {
+        eprintln!("usage: zkar digest <file>");
+        return ExitCode::from(USAGE_ERROR);
+    }
+    let path = &args[2];
     match std::fs::read(path) {
         Ok(bytes) => {
             println!("{}", zkar_core::verify::sha256_digest(&bytes));
@@ -416,13 +429,11 @@ fn cmd_digest(args: &[String]) -> ExitCode {
 }
 
 fn cmd_fixtures(args: &[String]) -> ExitCode {
-    let dir = match args.get(2) {
-        Some(dir) => dir,
-        None => {
-            eprintln!("fixtures requires a directory argument");
-            return ExitCode::FAILURE;
-        }
-    };
+    if args.len() != 3 {
+        eprintln!("usage: zkar fixtures <dir>");
+        return ExitCode::from(USAGE_ERROR);
+    }
+    let dir = &args[2];
     match write_fixtures(dir) {
         Ok(()) => {
             println!("wrote fixtures to {dir}");

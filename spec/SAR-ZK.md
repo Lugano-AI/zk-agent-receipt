@@ -62,13 +62,15 @@ any value `>= p`; they MUST NOT reduce it.
 `Poseidon` is the permutation used by Zcash Orchard (`P128Pow5T3`): width 3,
 rate 2, S-box `x^5`, 8 full rounds, 56 partial rounds, over `F_p`.
 
-For a domain label `D` (ASCII, at most 31 bytes) and inputs `x_1..x_k`:
+For a domain label `D` (printable ASCII, bytes `0x20` to `0x7e`, at most 31
+bytes) and inputs `x_1..x_k`:
 
 ```text
 H_D(x_1..x_k) = Sponge(tag(D), k, x_1, ..., x_k)
 ```
 
-`tag(D)` is the big-endian integer of `D`'s bytes. `Sponge` keeps a state
+`tag(D)` is the big-endian integer of `D`'s bytes. No label byte is zero, so
+two different labels never share a tag. `Sponge` keeps a state
 `(s_0, s_1, s_2)`: `s_0` and `s_1` are the rate, `s_2` is the capacity, and all
 three start at zero. Its input list is `tag(D), k, x_1, ..., x_k`, so
 `(tag(D), k)` is always the first pair absorbed. It takes the list two at a
@@ -431,7 +433,9 @@ members (after escape decoding) and JSON number tokens are rejected. The
 top-level `profile` MUST equal `public_input.profile`.
 
 - `fold_count` is the number of folds the proof covers: a power of two with
-  `4 <= fold_count <= 2^20`.
+  `4 <= fold_count <= 2^20`. The bucket rule (§11) adds two folds to `T`, so
+  a receipt in this format covers at most `T = 2^20 - 2` entries. The circuit
+  accepts larger `T` (§4), but this format cannot carry such a proof.
 - `arithmetization` names the construction (§9.1). `r1cs-supernova` is
   reserved; a verifier that does not implement it MUST reject it.
 - `proof_encoding` names the exact byte encoding of `proof`. The reference

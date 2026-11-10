@@ -57,6 +57,10 @@ fn assert_unsat_at<C: StepCircuit<F>>(circuit: &C, input: State, expected: &str)
     );
 }
 
+/// Compare the nullifier the circuit computed with `expected_out`. This shows
+/// what the circuit computes on this witness. It does not, by itself, show
+/// that the constraints fix the output: `tests/output_constraints.rs` checks
+/// that.
 fn is_sat_with_out_forced<C: StepCircuit<F>>(circuit: &C, input: State, expected_out: F) -> bool {
     let mut cs = TestConstraintSystem::<F>::new();
     let state = input

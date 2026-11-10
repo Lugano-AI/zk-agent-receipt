@@ -4,7 +4,7 @@ use std::{
     collections::HashSet,
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Mutex,
 };
 
@@ -65,19 +65,39 @@ pub struct FileReplaySet {
 impl FileReplaySet {
     pub fn new(path: impl Into<PathBuf>) -> Result<Self, Error> {
         let path = path.into();
-        OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .read(true)
             .append(true)
             .open(&path)?;
+        // A new file can vanish in a crash until its directory entry is on
+        // disk. Sync the file and its directory before the first record.
+        file.sync_all()?;
+        sync_parent_dir(&path)?;
         Ok(Self { path })
     }
 }
 
+#[cfg(unix)]
+fn sync_parent_dir(path: &Path) -> std::io::Result<()> {
+    let parent = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    File::open(parent)?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_parent_dir(_path: &Path) -> std::io::Result<()> {
+    Ok(())
+}
+
 impl ReplaySet for FileReplaySet {
     fn check_and_insert(&self, scope: F, nullifier: F) -> Result<bool, Error> {
+        // `new` made the file and synced its directory. If the file is gone
+        // now, the replay history is gone with it. Fail; do not start again
+        // with an empty file.
         let mut file = OpenOptions::new()
-            .create(true)
             .read(true)
             .append(true)
             .open(&self.path)?;
@@ -119,7 +139,11 @@ fn check_and_insert_locked(file: &mut File, scope: F, nullifier: F) -> Result<bo
         }
     }
 
-    writeln!(file, "{scope_hex}:{nullifier_hex}")?;
+    // Write the record with one call. `writeln!` on a bare file makes a
+    // call per fragment, and a crash between two of them would leave half a
+    // record that blocks every later check.
+    let record = format!("{scope_hex}:{nullifier_hex}\n");
+    file.write_all(record.as_bytes())?;
     file.sync_data()?;
     Ok(true)
 }
@@ -218,5 +242,20 @@ mod tests {
         assert!(replay.check_and_insert(F::from(7), F::from(11)).is_err());
         drop(replay);
         std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn a_replay_file_removed_after_open_fails_closed() {
+        let path = std::env::temp_dir().join(format!(
+            "zkar-replay-removed-{}-{}",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test").replace("::", "-")
+        ));
+        let _ = std::fs::remove_file(&path);
+        let replay = FileReplaySet::new(&path).unwrap();
+        assert!(replay.check_and_insert(F::from(7), F::from(11)).unwrap());
+        std::fs::remove_file(&path).unwrap();
+        assert!(replay.check_and_insert(F::from(7), F::from(11)).is_err());
+        assert!(!path.exists());
     }
 }

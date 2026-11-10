@@ -15,8 +15,7 @@ use zkar_prover::{
     issuance::Fixture,
     relation::{
         acc_native, policy_commitment_native, AccOpening, Pc, State, TraceStep, UniformCircuit,
-        ACC, KIND_PADDING, KIND_PAYMENT, KIND_TOOL, OUT, PC, POLICY_COMMITMENT, STATE_ARITY,
-        TREE_SIZE,
+        ACC, KIND_PADDING, KIND_PAYMENT, KIND_TOOL, OUT, PC, POLICY_COMMITMENT, TREE_SIZE,
     },
     schnorr, F,
 };
@@ -41,6 +40,12 @@ struct Run {
 
 /// Synthesize `circuit` on `input`, then add test constraints forcing chosen
 /// output slots to chosen values.
+///
+/// The synthesis assigns each output the value the circuit computed. A forced
+/// constraint therefore compares that computed value with the chosen one. It
+/// shows what the circuit computes on this witness. It does not, by itself,
+/// show that the constraints fix the output: `tests/output_constraints.rs`
+/// checks that.
 fn run<C: StepCircuit<F>>(circuit: &C, input: State, forced: &[(usize, F)]) -> Run {
     let mut cs = TestConstraintSystem::<F>::new();
     let z = input
@@ -200,16 +205,11 @@ fn a06_halt_or_nullifier_cannot_appear_without_final() {
     }
 }
 
-#[test]
-fn a07_every_output_slot_is_determined() {
-    for (i, step) in trace(SEED_A).iter().enumerate() {
-        for slot in 0..STATE_ARITY {
-            let wrong = step.output[slot] + F::ONE;
-            let r = run(&step.circuit, step.input, &[(slot, wrong)]);
-            assert!(!r.sat, "BREAK: fold {i} output slot {slot} is free");
-        }
-    }
-}
+// There is no a07 here. An earlier a07 forced each output slot to a wrong
+// value and expected an unsatisfied system. That check could not fail, because
+// the forced constraint compares against the value the synthesis itself
+// assigned. `tests/output_constraints.rs` checks at the constraint level that
+// every output variable is pinned.
 
 #[test]
 fn a08_foreign_fallbacks_are_isolated() {
