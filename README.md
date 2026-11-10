@@ -14,6 +14,7 @@ This repository holds the paper, the profile, a reference prover in Rust and the
 | [`spec/SAR-ZK.md`](spec/SAR-ZK.md) | The SAR-ZK v0.4-draft profile. This is the normative text. |
 | [`code/zk-agent-receipt`](code/zk-agent-receipt) | The reference prover and verifier for profile b, in Rust, with its tests and benchmark results. |
 | [`code/zkvm-baseline`](code/zkvm-baseline) | The same relation in RISC Zero 3.0.6, for comparison, with its results. |
+| [`spec/vectors`](spec/vectors) | Test vectors for the Poseidon hashes and the receipt wire format. They come from this code. No second implementation has confirmed them yet. |
 
 ## What a sealed receipt proves
 
@@ -42,6 +43,7 @@ We ran the 1,000-step RISC Zero case once. It took about 8.1 hours, and other pr
 ### Where the comparison does not favour us
 
 - RISC Zero's succinct receipt checks in about 9 ms at the two sizes where we measured it, 10 and 100 steps. Ours takes about 64 ms.
+- The check times above cover the proof check only. The whole `zkar verify` command took about 6.5 s on a 10-step record, on a machine in use. Loading the 64.6 MB verification key takes about 6.2 s of that. A verifier that stays running loads the key once.
 - RISC Zero proves any program. Our prover proves one fixed relation.
 - The Apple GPU path is disabled in the RISC Zero 3.0.6 source, and we did not test a CUDA GPU. A GPU should make RISC Zero faster. We cannot say by how much.
 - The RISC Zero runs at 100 and 1,000 steps are one run each, not medians. The 1,000-step run shared the CPU with other programs, which favours us.
@@ -64,7 +66,7 @@ cd code/zk-agent-receipt
 cargo test --target aarch64-apple-darwin -j 8 --workspace
 ```
 
-The suite has 142 tests. Six more run only in release mode; the command for them is in [`code/zk-agent-receipt/README.md`](code/zk-agent-receipt/README.md). That file also shows how to make keys, check a receipt and run the benchmark.
+The suite has 156 tests. Seven more run only in release mode; the command for them is in [`code/zk-agent-receipt/README.md`](code/zk-agent-receipt/README.md). That file also shows how to make keys, check a receipt and run the benchmark.
 
 The RISC Zero baseline needs the RISC Zero toolchain. See [`code/zkvm-baseline/README.md`](code/zkvm-baseline/README.md).
 

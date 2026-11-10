@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 # Linux tests are omitted because zkar-bench contains macOS-specific code.
-# This job runs the fast tests and the lint. It does not run the six ignored
+# This job runs the fast tests and the lint. It does not run the seven ignored
 # tests that make and check real proofs, or the zkVM baseline workspace. The
 # README gives the command for the real-proof tests.
 jobs:

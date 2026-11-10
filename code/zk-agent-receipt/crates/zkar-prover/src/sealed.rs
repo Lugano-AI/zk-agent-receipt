@@ -168,7 +168,8 @@ pub fn encode_proof(
     proofs::encode(proof).map(|bytes| URL_SAFE_NO_PAD.encode(bytes))
 }
 
-fn decode_proof(encoded: &str) -> Result<Compressed<UniformCircuit>, Error> {
+/// Decode a transported proof within the receipt proof-size limit.
+pub fn decode_proof(encoded: &str) -> Result<Compressed<UniformCircuit>, Error> {
     let max_encoded_len = (MAX_PROOF_BYTES * 8).div_ceil(6);
     if encoded.len() > max_encoded_len {
         return Err(Error::ProofDecode(format!(

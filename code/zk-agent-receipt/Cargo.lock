@@ -959,6 +959,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "relation"
+version = "0.1.0"
+dependencies = [
+ "halo2_poseidon",
+ "pasta_curves",
+ "rand_chacha",
+ "rand_core 0.6.4",
+ "serde",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,6 +1503,7 @@ dependencies = [
  "pasta_curves",
  "rand_chacha",
  "rand_core 0.6.4",
+ "relation",
  "serde",
  "serde_json",
  "sha2",

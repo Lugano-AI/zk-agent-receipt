@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+type: software
+title: Sealed Receipts
+authors:
+  - name: Lugano Labs
+repository-code: https://github.com/Lugano-AI/zk-agent-receipt
+license: Apache-2.0
+date-released: 2026-11-10
+preferred-citation:
+  type: report
+  title: "Sealed Receipts: Zero-Knowledge Policy Checks for AI Agent Task Records"
+  notes: Draft v0.5 for public comment
+  authors:
+    - name: Lugano Labs
+  year: 2026
+  url: https://github.com/Lugano-AI/zk-agent-receipt

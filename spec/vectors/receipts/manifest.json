@@ -1,0 +1,103 @@
+{
+  "cases": [
+    {
+      "file": "valid.json",
+      "result": "accept",
+      "reason": "valid wire shape"
+    },
+    {
+      "file": "duplicate_member.json",
+      "result": "reject",
+      "reason": "duplicate proof member",
+      "error": "duplicate_member",
+      "member": "proof",
+      "container": "JSON"
+    },
+    {
+      "file": "unknown_member.json",
+      "result": "reject",
+      "reason": "unknown top-level member",
+      "error": "unknown_member",
+      "member": "extra",
+      "container": "SealedReceipt"
+    },
+    {
+      "file": "number_token.json",
+      "result": "reject",
+      "reason": "fold count is a number",
+      "error": "not_a_string",
+      "member": "fold_count",
+      "container": "SealedReceipt"
+    },
+    {
+      "file": "leading_zero.json",
+      "result": "reject",
+      "reason": "decimal has a leading zero",
+      "error": "bad_lexical_form",
+      "member": "tree_size"
+    },
+    {
+      "file": "field_modulus.json",
+      "result": "reject",
+      "reason": "field value equals p",
+      "error": "bad_lexical_form",
+      "member": "log_root"
+    },
+    {
+      "file": "uppercase_hex.json",
+      "result": "reject",
+      "reason": "key digest uses uppercase hex",
+      "error": "bad_lexical_form",
+      "member": "vk_digest"
+    },
+    {
+      "file": "padded_base64url.json",
+      "result": "reject",
+      "reason": "proof uses base64url padding",
+      "error": "bad_lexical_form",
+      "member": "proof"
+    },
+    {
+      "file": "fold_not_power_of_two.json",
+      "result": "reject",
+      "reason": "fold count is not a power of two",
+      "error": "bad_lexical_form",
+      "member": "fold_count"
+    },
+    {
+      "file": "fold_below_four.json",
+      "result": "reject",
+      "reason": "fold count is below four",
+      "error": "bad_lexical_form",
+      "member": "fold_count"
+    },
+    {
+      "file": "fold_above_limit.json",
+      "result": "reject",
+      "reason": "fold count exceeds 2^20",
+      "error": "bad_lexical_form",
+      "member": "fold_count"
+    },
+    {
+      "file": "bad_log_id.json",
+      "result": "reject",
+      "reason": "log id starts with uppercase",
+      "error": "bad_lexical_form",
+      "member": "log_id"
+    },
+    {
+      "file": "profile_mismatch.json",
+      "result": "reject",
+      "reason": "top-level profile differs from public_input.profile",
+      "error": "profile_mismatch"
+    },
+    {
+      "file": "unknown_public_input_member.json",
+      "result": "reject",
+      "reason": "unknown member in public_input",
+      "error": "unknown_member",
+      "member": "extra",
+      "container": "PublicInput"
+    }
+  ]
+}

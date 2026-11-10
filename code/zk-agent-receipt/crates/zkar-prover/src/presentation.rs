@@ -80,6 +80,11 @@ fn check_fold_count(folds: usize) -> Result<(), NovaError> {
 #[cfg(test)]
 mod tests {
     use super::check_fold_count;
+    use crate::{
+        issuance::Fixture,
+        proofs::{self, Compressed},
+        relation::ACC,
+    };
 
     #[test]
     fn fold_count_limit_matches_the_receipt_format() {
@@ -91,5 +96,62 @@ mod tests {
         assert!(check_fold_count(12).is_err());
         assert!(check_fold_count(16).is_ok());
         assert!(check_fold_count(1 << 21).is_err());
+    }
+
+    #[test]
+    fn public_uniform_traces_reuse_issuance_blinding() {
+        let fixture = Fixture::benchmark_deterministic(1, 4, 2, 0x5341525a4b).unwrap();
+        let first = fixture.uniform_steps();
+        let second = fixture.uniform_steps();
+        assert_eq!(first[0].output, second[0].output);
+        for step in first.iter().chain(&second) {
+            assert_eq!(step.circuit.start.rho, fixture.rho);
+            assert_eq!(step.circuit.step.opening.rho, fixture.rho);
+            assert_eq!(step.circuit.final_witness.opening.rho, fixture.rho);
+        }
+    }
+
+    #[test]
+    #[ignore = "real cryptographic proofs; run the release proof integration suite"]
+    fn presentations_keep_public_values_and_use_fresh_blinding() {
+        let fixture = Fixture::benchmark_deterministic(2, 4, 2, 0x5341525a4b).unwrap();
+        let circuit = fixture.uniform_steps()[0].circuit.clone();
+        let parameters = proofs::setup(&circuit).unwrap();
+        let (prover_key, raw_vk) = Compressed::setup(&parameters).unwrap();
+        let digest = proofs::vk_digest(&raw_vk).unwrap();
+        let verifier_key = proofs::PinnedVerifierKey::new(raw_vk, &digest).unwrap();
+
+        let first = fixture.present(&parameters, &prover_key).unwrap();
+        let second = fixture.present(&parameters, &prover_key).unwrap();
+        let public_input = fixture.public_bind.to_array();
+        for presentation in [&first, &second] {
+            proofs::verify(
+                presentation.proof(),
+                &verifier_key,
+                presentation.fold_count(),
+                &public_input,
+                fixture.nullifier,
+            )
+            .unwrap();
+        }
+        assert_eq!(first.fold_count(), second.fold_count());
+        assert_ne!(first.rho(), second.rho());
+
+        let first_trace = fixture.reblinded(first.rho()).uniform_steps();
+        let second_trace = fixture.reblinded(second.rho()).uniform_steps();
+        assert_ne!(first_trace[0].output[ACC], second_trace[0].output[ACC]);
+        for (index, step) in second_trace.iter().enumerate() {
+            assert_eq!(step.circuit.start.rho, second.rho(), "start {index}");
+            assert_eq!(
+                step.circuit.step.opening.rho,
+                second.rho(),
+                "step opening {index}"
+            );
+            assert_eq!(
+                step.circuit.final_witness.opening.rho,
+                second.rho(),
+                "final opening {index}"
+            );
+        }
     }
 }

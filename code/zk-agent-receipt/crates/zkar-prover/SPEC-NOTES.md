@@ -57,8 +57,14 @@ uses that complete boundary; `zkar check` still reports schema-only or partial
 success and does not verify the proof.
 
 Benchmark verifier times cover the SNARK checks and output comparison;
-they exclude Ed25519 log-head verification, proof decoding, and replay-set
-storage. Fixture construction, native trace preparation, and constraint
+they exclude Ed25519 log-head verification, proof decoding, key loading, and
+replay-set storage. The whole `zkar verify` command took about 6.5 s on a
+10-entry record (median of 10 runs, one new process and one new replay file
+each, on a machine in use; range 6.47 s to 6.74 s). Key loading took about
+6.2 s of that: about 0.1 s for the digest of the raw file, about 5.95 s to
+decode the 64.6 MB file, and about 0.14 s to re-encode it and compare the
+digest. The other steps together took about 0.3 s. A verifier that stays
+running loads the key once. Fixture construction, native trace preparation, and constraint
 accounting occur outside setup/prover timers. Peak RSS covers the entire
 fresh measurement process, including those operations. Direct baselines
 omit padding; per-entry setup reuses keys for START+first STEP, STEP, and
@@ -191,6 +197,15 @@ base64url followed by bincode 2 legacy decoding, capped at 64 KiB decoded bytes,
 with trailing bytes rejected. Receipt JSON is bounded at 128 KiB in the CLI;
 64 KiB of proof alone expands to 87,382 base64url characters.
 
+`tests/decoder_robustness.rs` feeds the proof and key decoders 1,537 malformed
+byte streams of up to 64 KiB each, with large length prefixes at many offsets.
+No decoder panicked. Peak live memory was 1,114,263 bytes for the proof
+decoder and 2,105,349 bytes for the key decoder; the test fails above 4 MiB
+and 8 MiB. The plain bincode legacy decoder is therefore kept, with no extra
+size-limiting wrapper. Malformed key files above 64 KiB are not tested. The
+command-line tool compares the digest of the raw key bytes with the pinned
+digest before it decodes the key.
+
 Replay storage implements one atomic `check_and_insert(scope, nullifier)`.
 The memory implementation uses a mutex; the file implementation locks
 exclusively around lookup and append and fails closed on storage errors.
@@ -201,6 +216,11 @@ Fresh blinding does not change a receipt's scoped nullifier. `Fixture::present`
 samples blinding from `OsRng` inside every proving call, reblinds every
 accumulator opening, and produces a new compressed proof; it has no caller-rho
 parameter. Its prover-side `rho` accessor supports presentation audits.
+
+`Fixture::uniform_steps` is public and keeps the fixture's own blinding value.
+It exists for setup, tests and benchmarks. Two traces built from it use the
+same blinding, so their accumulator values match. A test pins this behaviour.
+To make a receipt, call `present`.
 
 Native padding preparation computes the same transcript-step Poseidon hash as a
 real entry and discards the result. Padding therefore does not skip that hash;

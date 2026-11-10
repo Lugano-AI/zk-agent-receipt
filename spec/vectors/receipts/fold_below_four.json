@@ -1,0 +1,22 @@
+{
+  "profile": "sar-zk-v0.4b",
+  "public_input": {
+    "profile": "sar-zk-v0.4b",
+    "issuer_key_commitment": "1",
+    "log_root": "42",
+    "tree_size": "17",
+    "log_id": "log.1",
+    "log_head_signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "policy_commitment": "7",
+    "nullifier_scope": "5",
+    "nullifier": "9"
+  },
+  "proof": "AAAA",
+  "fold_count": "2",
+  "algorithm": {
+    "arithmetization": "r1cs-nova-uniform",
+    "curve": "pasta",
+    "proof_encoding": "nova-snark-0.76.0/bincode-2.0.1-legacy",
+    "vk_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

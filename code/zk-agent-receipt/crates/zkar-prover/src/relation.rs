@@ -1473,3 +1473,273 @@ fn assert_less_or_equal_u32<CS: ConstraintSystem<F>>(
     enforce_boolean_false(cs.namespace(|| "top bit is one"), &bits[32].not());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{issuance::Fixture, proofs, E1};
+    use ff::Field;
+    use nova_snark::frontend::shape_cs::ShapeCS;
+
+    fn check_part(cs: &ShapeCS<E1>, name: &str, before: usize, expected: usize) -> usize {
+        let measured = cs.num_constraints() - before;
+        println!("{name:<36} {measured:>6}");
+        assert_eq!(measured, expected, "unexpected constraint count for {name}");
+        measured
+    }
+
+    #[test]
+    fn uniform_constraint_count_is_explained_part_by_part() {
+        let fixture = Fixture::benchmark_deterministic(1, 1, 0, 0x5341_522d_5a4b).unwrap();
+        let uniform = fixture.uniform_steps().remove(0).circuit;
+        let branches = fixture.branch_steps_unpadded();
+        let standalone_counts = branches
+            .iter()
+            .map(|step| proofs::constraint_count(&step.circuit))
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(standalone_counts, vec![2_483, 12_806, 45_046]);
+        let uniform_count = proofs::constraint_count(&uniform).unwrap();
+        assert_eq!(uniform_count, 60_301);
+
+        let mut cs = ShapeCS::<E1>::new();
+        let z = (0..STATE_ARITY)
+            .map(|index| {
+                AllocatedNum::alloc(cs.namespace(|| format!("state_{index}")), || Ok(F::ZERO))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        println!("part                                   constraints");
+        macro_rules! part {
+            ($name:literal, $expected:expr, $body:expr) => {{
+                let before = cs.num_constraints();
+                let result = $body;
+                let measured = check_part(&cs, $name, before, $expected);
+                (result, measured)
+            }};
+        }
+
+        let ((), public_bind) = part!(
+            "enforce_public_bind",
+            39,
+            enforce_public_bind(cs.namespace(|| "public bind"), &z).unwrap()
+        );
+        let (is_start, pc_start_check) = part!(
+            "pc equals START",
+            3,
+            is_equal_const(cs.namespace(|| "pc is start"), &z[PC], Pc::Start.field()).unwrap()
+        );
+        let (is_step_pc, pc_step_check) = part!(
+            "pc equals STEP",
+            3,
+            is_equal_const(cs.namespace(|| "pc is step"), &z[PC], Pc::Step.field()).unwrap()
+        );
+        let ((), pc_sum_one) = part!(
+            "recognized pc sum one",
+            1,
+            enforce_allocated_bit_sum_one(
+                cs.namespace(|| "pc is recognized"),
+                &[&is_start, &is_step_pc],
+            )
+        );
+        let (final_flag, final_flag_count) = part!("final flag", 1, {
+            let bit = AllocatedBit::alloc(
+                cs.namespace(|| "final flag"),
+                Some(uniform.final_flag),
+            )
+            .unwrap();
+            Boolean::from(bit)
+        });
+        let (is_final, select_final_and) = part!(
+            "select final AND",
+            1,
+            Boolean::and(
+                cs.namespace(|| "select final"),
+                &Boolean::from(is_step_pc.clone()),
+                &final_flag,
+            )
+            .unwrap()
+        );
+        let (is_step, select_step_and) = part!(
+            "select ordinary step AND",
+            1,
+            Boolean::and(
+                cs.namespace(|| "select ordinary step"),
+                &Boolean::from(is_step_pc),
+                &final_flag.not(),
+            )
+            .unwrap()
+        );
+        let is_start = Boolean::from(is_start);
+        let ((), branch_sum_one) = part!(
+            "branch sum one",
+            1,
+            enforce_boolean_sum_one(
+                cs.namespace(|| "exactly one branch"),
+                &[&is_start, &is_step, &is_final],
+            )
+        );
+
+        let (start_z, start_effective_state) = part!(
+            "start effective state",
+            9,
+            effective_state(
+                cs.namespace(|| "start effective state"),
+                &is_start,
+                &z,
+                &uniform.start_fallback,
+            )
+            .unwrap()
+        );
+        let (step_z, step_effective_state) = part!(
+            "step effective state",
+            9,
+            effective_state(
+                cs.namespace(|| "step effective state"),
+                &is_step,
+                &z,
+                &uniform.step_fallback,
+            )
+            .unwrap()
+        );
+        let (final_z, final_effective_state) = part!(
+            "final effective state",
+            9,
+            effective_state(
+                cs.namespace(|| "final effective state"),
+                &is_final,
+                &z,
+                &uniform.final_fallback,
+            )
+            .unwrap()
+        );
+
+        let (start_out, start_body) = part!(
+            "synthesize_start without public bind",
+            2_444,
+            synthesize_start(cs.namespace(|| "start"), &start_z, &uniform.start).unwrap()
+        );
+        let (step_out, step_body) = part!(
+            "synthesize_step without public bind",
+            12_767,
+            synthesize_step(cs.namespace(|| "step"), &step_z, &uniform.step).unwrap()
+        );
+        let (final_out, final_body) = part!(
+            "synthesize_final without public bind",
+            45_007,
+            synthesize_final(
+                cs.namespace(|| "final"),
+                &final_z,
+                &uniform.final_witness,
+            )
+            .unwrap()
+        );
+
+        let (pc_tail, select_pc_tail) = part!(
+            "select pc tail",
+            1,
+            select_num(
+                cs.namespace(|| "select pc tail"),
+                &is_step,
+                &step_out.pc,
+                &final_out.pc,
+            )
+            .unwrap()
+        );
+        let (_pc, select_pc) = part!(
+            "select pc",
+            1,
+            select_num(
+                cs.namespace(|| "select pc"),
+                &is_start,
+                &start_out.pc,
+                &pc_tail,
+            )
+            .unwrap()
+        );
+        let (acc_tail, select_acc_tail) = part!(
+            "select acc tail",
+            1,
+            select_num(
+                cs.namespace(|| "select acc tail"),
+                &is_step,
+                &step_out.acc,
+                &final_out.acc,
+            )
+            .unwrap()
+        );
+        let (_acc, select_acc) = part!(
+            "select acc",
+            1,
+            select_num(
+                cs.namespace(|| "select acc"),
+                &is_start,
+                &start_out.acc,
+                &acc_tail,
+            )
+            .unwrap()
+        );
+        let (out_tail, select_out_tail) = part!(
+            "select out tail",
+            1,
+            select_num(
+                cs.namespace(|| "select out tail"),
+                &is_step,
+                &step_out.out,
+                &final_out.out,
+            )
+            .unwrap()
+        );
+        let (_out, select_out) = part!(
+            "select out",
+            1,
+            select_num(
+                cs.namespace(|| "select out"),
+                &is_start,
+                &start_out.out,
+                &out_tail,
+            )
+            .unwrap()
+        );
+
+        let selector_count = pc_start_check
+            + pc_step_check
+            + pc_sum_one
+            + final_flag_count
+            + select_final_and
+            + select_step_and
+            + branch_sum_one
+            + start_effective_state
+            + step_effective_state
+            + final_effective_state
+            + select_pc_tail
+            + select_pc
+            + select_acc_tail
+            + select_acc
+            + select_out_tail
+            + select_out;
+        assert_eq!(selector_count, 44);
+
+        assert_eq!(public_bind + start_body, 2_483);
+        assert_eq!(public_bind + step_body, 12_806);
+        assert_eq!(public_bind + final_body, 45_046);
+        assert_eq!(standalone_counts[0], public_bind + start_body);
+        assert_eq!(standalone_counts[1], public_bind + step_body);
+        assert_eq!(standalone_counts[2], public_bind + final_body);
+
+        let parts_total = public_bind + start_body + step_body + final_body + selector_count;
+        assert_eq!(parts_total, 60_301);
+        assert_eq!(cs.num_constraints(), parts_total);
+        assert_eq!(uniform_count, parts_total);
+        assert_eq!(2 * public_bind - selector_count, 34);
+        assert_eq!(
+            standalone_counts.iter().sum::<usize>() - uniform_count,
+            2 * public_bind - selector_count
+        );
+
+        println!("{:<36} {:>6}", "selector logic total", selector_count);
+        println!("{:<36} {:>6}", "uniform parts total", parts_total);
+        println!("{:<36} {:>6}", "standalone sum minus uniform", 34);
+    }
+}

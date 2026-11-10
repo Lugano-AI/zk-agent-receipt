@@ -26,7 +26,7 @@ The last command prints `LOG HEAD SIGNATURE OK; PROOF NOT CHECKED` and exits
 with code 2.
 
 The first command runs the fast tests. The repository's CI runs only that
-command and the lint. The second command runs the six tests that make and
+command and the lint. The second command runs the seven tests that make and
 check real proofs. They need a release build and several minutes, so run them
 yourself before you rely on a change to the prover.
 
@@ -92,6 +92,16 @@ requires 87,382 unpadded base64url characters before JSON metadata. Decoded
 proofs are capped at 64 KiB; bincode trailing bytes are rejected. Verification
 key files are capped at 128 MiB because they contain the full constraint shape.
 
+A test feeds both decoders 1,537 malformed byte streams of up to 64 KiB each.
+No decoder panicked. The proof decoder held at most 1,114,263 bytes at one
+time, and the key decoder at most 2,105,349 bytes. The test fails above 4 MiB
+and 8 MiB. Malformed key files above 64 KiB are not tested.
+
+One `zkar verify` run on a 10-entry record took about 6.5 s (median of 10
+runs, one new process each, on a machine in use). Loading the verification key
+takes about 6.2 s of that: the file is 64.6 MB, and decoding it takes about
+5.95 s. A verifier that stays running loads the key once.
+
 The proof library can panic on a proof whose inner vectors have the wrong
 length. The verifier catches that panic and rejects the receipt. Do not build
 it with `panic = "abort"`: the process would stop instead.
@@ -137,7 +147,7 @@ log:
 
 - Non-uniform SuperNova folding.
 - In-circuit Ed25519 issuer signatures (profile a).
-- An external cryptographic audit and normative cross-implementation vectors.
+- An external cryptographic audit, and test vectors that a second implementation has confirmed. The vectors in `spec/vectors` come from this code only.
 
 The RISC Zero baseline is a separate workspace: [`../zkvm-baseline`](../zkvm-baseline).
 

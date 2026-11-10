@@ -82,8 +82,10 @@ resistance itself remains a computational assumption.
 Domain labels used in this profile: `SAR-ZK statement`, `SAR-ZK leaf`,
 `SAR-ZK node`, `SAR-ZK empty`, `SAR-ZK transcript`, `SAR-ZK step`,
 `SAR-ZK allow`, `SAR-ZK policy`, `SAR-ZK nk`, `SAR-ZK nullifier`,
-`SAR-ZK scope`, `SAR-ZK acc`, `SAR-ZK issuer`, `SAR-ZK schnorr`. Test vectors are pending; until they exist,
-two implementations cannot claim compatibility.
+`SAR-ZK scope`, `SAR-ZK acc`, `SAR-ZK issuer`, `SAR-ZK schnorr`. Test vectors
+for every label are in `spec/vectors/poseidon.json`. They come from this
+implementation only. Until a second implementation reproduces them, two
+implementations cannot claim compatibility.
 
 ### 3.3 Digests
 An inventory digest is a v0.2 `DIGEST` (SHA-256). In the circuit it is two
