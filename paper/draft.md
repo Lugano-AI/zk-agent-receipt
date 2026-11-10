@@ -545,7 +545,9 @@ here.
 
 The following design and hypotheses were stated before measurement. Their
 wording is unchanged. This is our own account: we did not register them with a
-third party, and this repository's history starts after the measurements.
+third party, and this repository's history starts after every measurement but
+two: the 1,000-entry RISC Zero run and the whole-command timing of
+`zkar verify`. Section 9.2 describes both.
 
 We will build profile b first and measure it.
 
