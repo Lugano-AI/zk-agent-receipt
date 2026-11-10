@@ -30,9 +30,9 @@ zero-knowledge construction folds in random satisfying instances before
 compression; the implementation has not been independently audited.
 
 On one Apple M5 Max CPU, our 1,000-entry proof took 94.926 s to create and
-63.893 ms to verify, and was 11,784 bytes long. A cycle-based estimate puts
-RISC Zero's faster composite mode at 30,415 s (about 320× our proving time), but we
-did not prove that 1,000-entry case. The proof covers the data the issuer
+63.893 ms to verify, and was 11,784 bytes long. RISC Zero's faster composite
+mode took 29,316 s for the same case (about 308× our proving time), in one run
+on a machine that was also in use. The proof covers the data the issuer
 declared, not what the agent actually did.
 
 ## Lay summary
@@ -63,10 +63,12 @@ about 12 kilobytes. Both stayed about the same from 10 steps to 1,000.
 
 We ran the same check in the faster mode of RISC Zero, a general-purpose system
 that can prove any program. For a 100-step task it took about 55 minutes,
-against just over 15 seconds for ours. For 1,000 steps we estimate about 8.4
-hours for RISC Zero, about 320 times our time. We did not run that case. A
-graphics card would speed RISC Zero up, and we did not test one. Nobody outside
-has audited the work yet.
+against just over 15 seconds for ours. For 1,000 steps it took about 8.1
+hours, about 308 times our time. We ran that case once, while the computer was
+also doing other work. Other work slows RISC Zero down, so a quiet computer
+would give a smaller gap. We do not know by how much. A graphics card would
+speed RISC Zero up, and we did not test one. Nobody outside has audited the
+work yet.
 
 ## 1. Introduction
 
@@ -527,11 +529,19 @@ serialization, verification and artifact I/O. RISC Zero setup is not separately
 measured. Verification runs after proving in the same process and may benefit
 from warm caches.
 
-RISC Zero did not prove the `T = 1,000` case. Its 749,207,552 cycles come from
-an execution-only run. For each receipt mode separately, we draw a straight
-line in total cycles through the `T = 10` median and the `T = 100` run, then
-evaluate it at those cycles. Only the `T = 1,000` proving times are estimates.
-We do not estimate its other missing metrics.
+RISC Zero proved the `T = 1,000` case once, in composite mode. Other programs
+shared the CPU during that run. We sampled the load every five minutes with
+`ps`. Over 97 samples, the prover held a mean of 1,620% CPU out of 1,800%.
+Other programs took a mean of 102%, with a peak of 706%. Shared load makes RISC
+Zero slower, so this run favours our system by an amount we cannot state. We
+made the other runs, ours and RISC Zero's, with no other heavy work on the
+machine, but we kept no load log for them.
+
+RISC Zero did not prove the succinct `T = 1,000` case. For that mode, we draw a
+straight line in total cycles through the `T = 10` median and the `T = 100`
+run, then evaluate it at 749,207,552 cycles. An execution-only run and the
+composite proof run both report that count. Only the succinct `T = 1,000`
+proving time is an estimate. We do not estimate its other missing metrics.
 
 Both systems ran on the same CPU. RISC Zero 3.0.6's Apple Metal path is
 disabled in its source, and we did not test CUDA. A GPU would cut RISC Zero's
@@ -569,8 +579,9 @@ the comparison includes setup and memory as well as proof time.
 ### 9.4 RISC Zero results
 
 At `T = 10`, each value is the median of three runs. At `T = 100`, it is the
-single completed run. The two `T = 1,000` proving times are estimates, not
-measurements. A dash means that no proof metric was measured.
+single completed run. At `T = 1,000`, the composite row is one run on a
+machine in use (Section 9.2). The succinct proving time is an estimate, not a
+measurement. A dash means that no proof metric was measured.
 
 | T | Mode | Proof runs | Prove (s) | Verify (ms) | Receipt bytes | Peak RSS | Total cycles |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -578,20 +589,10 @@ measurements. A dash means that no proof metric was measured.
 | 10 | succinct | 3 | 955.412304042 | 8.975834 | 225,018 | 11,206,459,392 | 20,971,520 |
 | 100 | composite | 1 | 3,311.618415375 | 879.667333 | 22,225,718 | 11,186,831,360 | 82,837,504 |
 | 100 | succinct | 1 | 4,087.643700459 | 9.063584 | 225,018 | 11,208,867,840 | 82,837,504 |
-| 1,000 | composite | 0 | 30,415.030 (estimate) | — | — | — | 749,207,552 |
+| 1,000 | composite | 1 | 29,316.134718709 | 7,674.066292 | 201,128,174 | 14,368,112,640 | 749,207,552 |
 | 1,000 | succinct | 0 | 37,825.493 (estimate) | — | — | — | 749,207,552 |
 
-The estimate uses the displayed, unrounded inputs. For composite:
-
-```text
-3311.618415375
-+ (749207552 - 82837504)
-  * (3311.618415375 - 795.330032625)
-  / (82837504 - 20971520)
-= 30415.029724487... s
-```
-
-For succinct:
+The succinct estimate uses the displayed, unrounded inputs:
 
 ```text
 4087.643700459
@@ -601,9 +602,25 @@ For succinct:
 = 37825.492046611... s
 ```
 
+Before we ran the composite case, the same method gave this estimate for it:
+
+```text
+3311.618415375
++ (749207552 - 82837504)
+  * (3311.618415375 - 795.330032625)
+  / (82837504 - 20971520)
+= 30415.029724487... s
+```
+
+The measured composite time, 29,316.134 s, is 3.6% lower than that estimate,
+even with the shared load. The straight line overstated the composite time, so
+the succinct estimate may be too high in the same way.
+
 RISC Zero's succinct receipt verifies in about 9 ms, faster than our roughly
 64 ms. Its receipt is 225,018 bytes against our 11,784 bytes. We lose on
-verification speed and win on proof size in this comparison.
+verification speed and win on proof size in this comparison. The composite
+receipt grows with the run. At `T = 1,000` it is 201,128,174 bytes and takes
+7.674 s to verify.
 
 ### 9.5 Hypothesis verdicts
 
@@ -611,13 +628,14 @@ verification speed and win on proof size in this comparison.
   all three sizes. Median verification stays between 59.950 and 64.204 ms from
   10 to 1,000 entries. This is a result for these fixtures and this machine,
   not a proof about every run length.
-- **H2: supported, with an estimated 1,000-entry comparison.** Against
-  composite RISC Zero, folded proving is 163.100 times faster at `T = 10` and
-  216.483 times faster at `T = 100`. The estimated factor at `T = 1,000` is
-  320.408. The corresponding succinct factors are 195.928, 267.212 and an
-  estimated 398.473. All exceed the pre-registered factor of ten. The measured
-  results cover 10 and 100 entries; the 1,000-entry result depends on the
-  cycle extrapolation and is CPU-only.
+- **H2: supported by the measurements.** Against composite RISC Zero, folded
+  proving is 163.100 times faster at `T = 10`, 216.483 times faster at
+  `T = 100` and 308.831 times faster at `T = 1,000`. The `T = 1,000` factor
+  comes from one RISC Zero run on a machine in use, so a quiet machine would
+  give a lower factor. The prover still held a mean of 90% of the CPU, so the
+  load cannot explain a factor of this size. The corresponding succinct factors
+  are 195.928, 267.212 and an estimated 398.473. All exceed the pre-registered
+  factor of ten. All results are CPU-only.
 - **H3: not testable as written.** Uniform Nova has no separate final circuit
   in the measured implementation. Every fold includes all three branches. We
   have not rewritten the hypothesis after the fact. The closest measured
@@ -652,8 +670,10 @@ results because its Ed25519 final circuit was not built.
   and a GPU baseline could be much faster by an unknown amount.
 - RISC Zero has three proof runs at `T = 10` but only one at `T = 100`. The
   latter has no measured run-to-run spread.
-- The `T = 1,000` RISC Zero proving times are straight-line cycle estimates.
-  They are not proof measurements. The cycle count itself comes from execution.
+- The `T = 1,000` composite RISC Zero time is one run on a machine in use.
+  Shared load slowed it by an unknown amount, in our favour, and it has no
+  measured run-to-run spread. The succinct `T = 1,000` time is a straight-line
+  cycle estimate, not a proof measurement.
 - RISC Zero proves arbitrary programs, while our system proves one fixed
   relation. The guest also omits the outer receipt protocol. Receipt encodings
   and verification scopes differ, as described above.
@@ -695,8 +715,9 @@ results because its Ed25519 final circuit was not built.
     time. These are future work.
 11. The measured uniform prover repeats every branch on every fold. The cheaper
     SuperNova design and profile a remain unbuilt and unmeasured.
-12. The comparison uses synthetic fixtures and one CPU. The 1,000-entry RISC
-    Zero proving times are estimates, and GPU proving is unmeasured.
+12. The comparison uses synthetic fixtures and one CPU. The 1,000-entry
+    composite RISC Zero time is one run under shared load, the succinct time is
+    an estimate, and GPU proving is unmeasured.
 13. Folded proving is not best on every metric. RISC Zero's succinct receipt
     verifies in about 9 ms against our roughly 64 ms, but it is 225,018 bytes
     against our 11,784 bytes. The monolithic proof is smaller, and per-entry
@@ -714,8 +735,8 @@ results because its Ed25519 final circuit was not built.
 | Replay within a scope is detected | Implemented with an atomic replay set; best effort, and a holder can claim reissue | Section 6 |
 | Nullifier values are unlinkable across scopes | Argued, under the PRF assumption; whole presentations may still link | Section 6 |
 | Audit mode shows every receipt of an account was presented | Argued; trusts the issuer to log every receipt | Section 6 |
-| Faster than a zkVM on this relation | Measured at 10 and 100; estimated at 1,000; CPU only | Section 9, H2 |
-| Timings and sizes | Measured for profile b and the baselines; RISC Zero proving at 1,000 is estimated | Section 9 |
+| Faster than a zkVM on this relation | Measured at 10, 100 and 1,000; the 1,000 run is one run on a machine in use; CPU only | Section 9, H2 |
+| Timings and sizes | Measured for profile b and the baselines; RISC Zero succinct proving at 1,000 is estimated | Section 9 |
 | Candidate-set sizes | 16 synthetic native candidates; weak structural count, not deployment anonymity; zkVM candidate set unknown | Sections 8 and 9 |
 
 ## References

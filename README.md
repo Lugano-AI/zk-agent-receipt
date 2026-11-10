@@ -33,18 +33,18 @@ We ran all tests on one Apple M5 Max (18 cores, 128 GB), on the CPU only. Our fi
 | ---: | ---: | ---: | ---: |
 | 10 | 4.876 s | 795.330 s | 163 |
 | 100 | 15.297 s | 3,311.618 s (one run) | 216 |
-| 1,000 | 94.926 s | 30,415 s (**estimate**; we did not run it) | about 320 |
+| 1,000 | 94.926 s | 29,316.134 s (one run, on a machine in use) | 308 |
 
 At 1,000 steps, our proof is 11,784 bytes and the check takes 63.893 ms. The proof size stayed the same at 10, 100 and 1,000 steps, and the check took between 59.9 and 64.3 ms.
 
-The 1,000-step RISC Zero figure is a straight-line estimate from the cycle count (749,207,552) and the two measured runs. Section 9 of the paper gives the method.
+We ran the 1,000-step RISC Zero case once. It took about 8.1 hours, and other programs used the computer during the run. That slows RISC Zero down, so a quiet machine would give a smaller ratio. We do not know by how much. The load log is in the results files, and Section 9 of the paper gives the details.
 
 ### Where the comparison does not favour us
 
 - RISC Zero's succinct receipt checks in about 9 ms. Ours takes about 64 ms.
 - RISC Zero proves any program. Our prover proves one fixed relation.
 - The Apple GPU path is disabled in the RISC Zero 3.0.6 source, and we did not test a CUDA GPU. A GPU would make RISC Zero faster. We cannot say by how much.
-- The RISC Zero run at 100 steps is one run, not a median.
+- The RISC Zero runs at 100 and 1,000 steps are one run each, not medians. The 1,000-step run shared the CPU with other programs, which favours us.
 - Section 9 of the paper lists the cases where our other two baselines win: one proof is smaller, and one uses less memory.
 
 ### The three hypotheses
@@ -52,7 +52,7 @@ The 1,000-step RISC Zero figure is a straight-line estimate from the cycle count
 We wrote the hypotheses before we measured.
 
 - **H1: the measurements support it.** Proof size and check time stay flat from 10 to 1,000 steps.
-- **H2: the measurements support it, with a condition.** Our prover is more than 10 times faster than the zkVM on the same relation. The 1,000-step RISC Zero figure is an estimate, and both systems ran on the CPU only.
+- **H2: the measurements support it, with a condition.** Our prover is more than 10 times faster than the zkVM on the same relation. The 1,000-step RISC Zero figure is one run on a machine in use, and both systems ran on the CPU only.
 - **H3: we cannot test it as written.** The prover uses uniform Nova, which has no separate final circuit. The paper reports the nearest measured quantity and does not rewrite the hypothesis.
 
 ## Build and test
@@ -71,12 +71,13 @@ The RISC Zero baseline needs the RISC Zero toolchain. See [`code/zkvm-baseline/R
 ## The results files
 
 - Our prover: [`code/zk-agent-receipt/bench-results/2026-11-09-quiet/`](code/zk-agent-receipt/bench-results/2026-11-09-quiet/) has `results.md`, `results.json`, the run log and the raw record of each run.
-- RISC Zero: [`code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/`](code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/) has the raw record of each proof run. [`2026-11-09-fairness/`](code/zkvm-baseline/bench-results/2026-11-09-fairness/) records two changes that made the baseline faster before we measured it, with the cycle counts before and after.
+- RISC Zero: [`code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/`](code/zkvm-baseline/bench-results/2026-11-09-quiet/raw/) has the raw record of each proof run. [`2026-11-09-fairness/`](code/zkvm-baseline/bench-results/2026-11-09-fairness/) records two changes that made the baseline faster before we measured it, with the cycle counts before and after. [`2026-11-10-t1000/`](code/zkvm-baseline/bench-results/2026-11-10-t1000/) has the raw record, the run details and the load log of the 1,000-step run.
 
-We changed three things before we published these files:
+We changed four things before we published these files:
 
 - We made the file paths in the RISC Zero records relative. No measured value changed.
-- We left out the RISC Zero receipt files. Each is 5 to 22 MB. The raw records keep their sizes and timings.
+- We left out the RISC Zero receipt files. Each is 5 to 201 MB. The raw records keep their sizes and timings.
+- We removed the names of the other programs from the load log of the 1,000-step run. The CPU figures are unchanged.
 - After the measured runs, we edited comments, the documents and the name of one test file. We changed no prover logic and no relation logic.
 
 ## Limits

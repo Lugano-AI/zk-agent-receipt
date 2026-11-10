@@ -1,0 +1,11 @@
+start_utc=2026-11-09T22:55:30Z
+load_start={ 5.48 6.32 14.46 }
+start_condition=machine in use; other programs used about 116% CPU in total just before the start
+binary_sha256=1129854a8cc58318d152a9a6058db2fe7ef63d8a03872c1f4d605f5727f52091
+cargo_lock_sha256=be11809c65d44e08e0d20fe9310276aff8edf0f5f5ef9ccc0e88809147472859
+command=baseline-host prove --t 1000 --receipt-kind composite --seed 5341522d5a4b2d76302e34622d666978747572652d736565642d303030312121 --receipt-out bench-results/2026-11-10-t1000/receipts/composite-t1000-r1.receipt
+environment=RISC0_DEV_MODE=0 RISC0_PROVER=local RISC0_EXECUTOR=local; RISC0_BACKEND and RAYON_NUM_THREADS unset
+exit_code=0
+end_utc=2026-11-10T07:04:47Z
+load_end={ 15.85 30.79 33.12 }
+load_log=load-samples.txt; one sample every 5 minutes from ps; prover_cpu is the prover process and other_cpu is the sum of all other processes; 1800% is the whole machine (18 cores); the first sample is at launch

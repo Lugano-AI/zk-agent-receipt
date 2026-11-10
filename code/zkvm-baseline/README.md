@@ -129,10 +129,12 @@ harness rejects enabled dev mode, selects the local prover, requests the
 chosen SDK receipt kind, checks the returned variant, verifies the receipt,
 and compares its journal to native verification. The raw records of the
 measured run are in `bench-results/2026-11-09-quiet/raw/`: three runs per
-receipt kind at T=10 and one run per receipt kind at T=100. T=1000 was not
-proved. The receipt files are not in this repository because of their size
-(about 5 to 22 MB each); the `receipt_path` fields in the raw records name
-where they were written. For the full budgeted serial runner, use an
+receipt kind at T=10 and one run per receipt kind at T=100. One composite run
+at T=1000 is in `bench-results/2026-11-10-t1000/`, with its load log; other
+programs used the machine during that run. Succinct T=1000 was not proved. The
+receipt files are not in this repository because of their size (about 5 to
+201 MB each); the `receipt_path` fields in the raw records name where they
+were written. For the full budgeted serial runner, use an
 explicit fresh output directory:
 
 ```sh
