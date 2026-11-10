@@ -194,6 +194,18 @@ cryptographic privacy. They complement this work.
 **Logs.** Certificate Transparency [23, 24] made signed, gossiped Merkle logs
 practical. We use its gossip idea as a mitigation (Section 8).
 
+**Agent records in zero knowledge.** Three 2026 works apply zero-knowledge
+proofs to records of AI agents, as we do. ZK-Receipt [26] has a provider sign a
+credential for one AI interaction. The holder then proves in zero knowledge that
+an authorized provider and model signed it, without showing the prompt or the
+response. Its prototype uses Circom and Groth16. AgentProof [27] is an
+open-source proof of concept. It uses Groth16 to prove that a log of at most
+eight tool calls follows a small set of rules. Authorization Without
+Disclosure [28] proposes a zero-knowledge proof over an authorization decision
+whose receipt body stays sealed; it reports no implementation. Our work differs
+in scale and in evidence: we fold a policy check over a signed transcript of up
+to 1,000 entries with no trusted setup, and we publish measurements.
+
 | Approach | What it proves | Rests on | Gap for agent records |
 |---|---|---|---|
 | Issuer-signed compliance | one fixed policy | issuer | policy fixed at issuance; issuer sees every check |
@@ -766,3 +778,6 @@ results because its Ed25519 final circuit was not built.
 23. B. Laurie, A. Langley and E. Kasper. *Certificate Transparency.* RFC 6962, 2013.
 24. B. Laurie, E. Messeri and R. Stradling. *Certificate Transparency Version 2.0.* RFC 9162, 2021.
 25. Electron Labs. *ed25519-circom: Ed25519 signature verification in circom* (unaudited research code). https://github.com/Electron-Labs/ed25519-circom
+26. A. Emami Neishabouri, A. Sartipi, J. Schönrich and I. Tchappi. "ZK-Receipt: Privacy-Preserving Verifiable Provenance for Intermediated AI Services." Workshop "Who Verifies the Agents? Toward Reliable Agent Development", NeurIPS 2026. https://neurips.cc/virtual/2026/172956
+27. *AgentProof: zero-knowledge verification of AI agent policy compliance* (proof of concept). 2026. https://github.com/dvelton/agentproof
+28. A. Hasbini. *Authorization Without Disclosure: An advisory reference architecture for non-disclosing agent-to-agent authorization.* Version 1.1, 2026. doi:10.5281/zenodo.23515310
