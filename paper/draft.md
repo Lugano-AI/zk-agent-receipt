@@ -302,6 +302,13 @@ issuer that signs a chain built from some other task binding is not caught by
 the proof. The RISC Zero guest rebuilds the chain from the signed
 `task_binding`, so it is stricter on this one point.
 
+The gap gives a holder no forgery. The signature covers the final transcript
+value and the step count, and the circuit enforces both. A holder would have to
+forge the signature or find a second chain of the signed length that ends at
+the signed value, which is a Poseidon collision. What the circuit misses is an
+issuer that signs an inconsistent statement, and a pass already trusts the
+issuer for what the record says.
+
 A test in the repository gives the same records to both relations: the
 constraints of our circuit, and the plain relation that the guest runs. It
 makes no proofs. The two agree on honest records at six run lengths, and they
@@ -392,9 +399,10 @@ cite that figure as an estimate of scale; we have not measured our own.
 Profile a was not built, so we report no measurement for its final circuit.
 
 **Zero knowledge.** Folding alone does not hide the witness. Before compression,
-the prover must fold in a random satisfying instance, as Nova and HyperNova
-describe [11, 13]. That fold is what hides the witness. We rely on those papers
-for the argument; we did not prove it again. The reference prover calls
+the prover must fold in a random satisfying instance. The nova-snark
+documentation says this makes the proof zero-knowledge and points to the
+HyperNova paper for the details [13]. That fold is what hides the witness. We
+rely on that paper for the argument; we did not prove it again. The reference prover calls
 nova-snark's CompressedSNARK. We inspected that code: it samples and folds
 random satisfying instances on both curves before Spartan compression. The
 presentation API also samples fresh accumulator blinding from the operating
@@ -441,7 +449,9 @@ nullifiers. Each logged record can yield only one nullifier per scope, so `n`
 different nullifiers cover every leaf. A failing record cannot be proven, so a
 missing proof means a withheld or failing record. The auditor learns `n` and
 whose records these are; it still learns nothing about what they say. Audit
-mode still trusts the issuer to log every receipt.
+mode still trusts the issuer to log every receipt, and it trusts the log's
+signer to keep every leaf. Audit mode is a design. The repository does not
+implement it.
 
 ## 7. Security argument (sketch)
 
@@ -453,7 +463,10 @@ This is a sketch, not a proof.
   [15]. Neither covers SuperNova directly. The uniform design we built does not
   claim that composition. It relies on the repaired Nova cycle argument of
   [14]. The nova-snark documentation says the library implements that
-  instantiation. We did not audit the library. Both designs also rest on
+  instantiation. We read the verifier in version 0.76.0. It recomputes a hash
+  over each of the two running instances and rejects a proof whose last step
+  does not carry both hashes. We did not compare the code with [14] line by
+  line, and we did not audit the library. Both designs also rest on
   collision resistance of Poseidon over the Pallas base field, for the
   transcript, the tree and the commitments; binding of the nullifier-key
   commitment, which follows from collision resistance; and unforgeability of
@@ -467,8 +480,11 @@ This is a sketch, not a proof.
   collision resistance. Our reference prover relies on the compression step in
   nova-snark. We checked that the code performs it. That is not a proof that
   the step is secure.
-- **Nullifier privacy** assumes Poseidon keyed by `nk` behaves as a PRF across
-  scopes. Collision resistance alone does not give this.
+- **Nullifier privacy** assumes Poseidon keyed by a secret, uniformly random
+  `nk` behaves as a PRF across scopes. An efficient adversary that picks scopes
+  adaptively and sees many outputs must not tell them from random, even when
+  it also holds the commitment `H(nk, r)`. Collision resistance alone does not
+  give this.
 - **Leaf privacy.** Log leaves are hashes of `S`, and `S` includes the
   commitment `H(nk, r)` with a fresh random `r`. Under the same hiding
   assumption as above, a leaf shows that some record exists but not what it
@@ -501,8 +517,10 @@ not theorems.
 The verifier sees the public input: the profile, the issuer key commitment,
 the log and its root and size, the policy commitment, the scope and the
 nullifier. It also learns the number of folding steps, because folding
-verifiers take it as input. Holders should pad each run up to the next power of
-two, so the verifier learns only a size bucket, not the exact length.
+verifiers take it as input. The reference prover pads each run up to the next
+power of two, and the reference verifier rejects a step count that is not a
+power of two from 4 through 2^20. So the verifier learns only a size bucket,
+not the exact length.
 
 Zero knowledge hides everything else. It does not promise that many records fit
 what is public. The records that match all public information form the
@@ -528,7 +546,9 @@ the verifier has at most `Q` bits from the answers themselves, and nothing
 stops those bits from pointing to a single record. This count leaves out what
 timing, error messages and the public inputs may add. If the auditor may choose
 any policy, it can ask "does the allowlist without tool D still pass?" once per
-tool. It can find the exact payment count with about 32 payment bounds. It can
+tool. The payment count can't exceed the padded step count the verifier
+already learns, so a binary search over payment bounds finds it in about 11
+queries at 1,000 entries and never more than 21. It can
 learn the egress flag in one question. So the holder's wallet, not the circuit,
 must limit what it answers. It proves only against approved policy classes:
 allowlists from a registry and a short list of coarse payment bounds. It asks
@@ -729,7 +749,7 @@ even with the shared load. The straight line overstated the composite time. The
 succinct estimate may be too high in the same way.
 
 At the two sizes where we measured it, 10 and 100 entries, RISC Zero's succinct
-receipt verifies in about 9 ms, faster than our roughly 64 ms. Its receipt is
+receipt verifies in about 9 ms, faster than our 60 to 64 ms. Its receipt is
 225,018 bytes against our 11,784 bytes. We lose on verification speed and win on
 proof size in this comparison. The composite receipt grows with the run. At `T =
 1,000` it is 201,128,174 bytes and takes 7.674 s to verify.
@@ -830,8 +850,9 @@ We did not build its Ed25519 final circuit.
 5. The candidate set, not the log size, bounds what the verifier cannot tell
    apart.
 6. The issuer could sign two statements for one task and so give the holder two
-   nullifiers. Only issuance discipline prevents this. Audit mode at least
-   makes the extra receipt visible.
+   nullifiers. Only issuance discipline prevents this. In audit mode the extra
+   receipt adds one to the count, but the auditor cannot tell that two receipts
+   cover one task.
 7. Outside audit mode, the holder chooses which receipts to show.
 8. Each answered policy leaks one bit, and a refusal can leak too. The
    specification requires wallet controls that limit this, but we have not
@@ -847,7 +868,7 @@ We did not build its Ed25519 final circuit.
     composite RISC Zero time is one run under shared load. The succinct time is
     an estimate. GPU proving is unmeasured.
 13. Folded proving is not best on every metric. RISC Zero's succinct receipt
-    verifies in about 9 ms (measured at 10 and 100 entries) against our roughly
+    verifies in about 9 ms (measured at 10 and 100 entries) against our 60 to
     64 ms, but it is 225,018 bytes against our 11,784 bytes. The monolithic
     proof is smaller than ours: 7,928 bytes against 11,784 at 1,000 entries.
     Per-entry proving uses less peak memory in these runs.
@@ -862,8 +883,8 @@ We did not build its Ed25519 final circuit.
 | No trusted setup | Inherited from Nova-family schemes and Spartan | [11, 12, 16] |
 | Zero knowledge | Built with random satisfying-instance folds in nova-snark; not independently audited | Sections 5.6 and 7 |
 | Replay within a scope is detected | Implemented with an atomic replay set; best effort, and a holder can claim reissue | Section 6 |
-| Nullifier values are unlinkable across scopes | Argued, under the PRF assumption; whole presentations may still link | Section 6 |
-| Audit mode shows every receipt of an account was presented | Argued; trusts the issuer to log every receipt | Section 6 |
+| Nullifier values are unlinkable across scopes | Argued, assuming keyed Poseidon is a PRF even to a holder of `H(nk, r)` and that the presented proof is zero-knowledge; whole presentations may still link | Section 6 |
+| Audit mode shows every receipt of an account was presented | Argued; not implemented; trusts the issuer to log every receipt and the log's signer to keep every leaf | Section 6 |
 | Faster than a zkVM on this relation | Measured at 10, 100 and 1,000, on test records of the same length but not one shared input; the 1,000 run is one run on a machine in use; CPU only | Section 9, H2 |
 | Timings and sizes | Measured for profile b and the baselines; RISC Zero succinct proving at 1,000 is estimated | Section 9 |
 | Candidate-set sizes | 16 synthetic native candidates; weak structural count, not deployment anonymity; zkVM candidate set unknown | Sections 8 and 9 |

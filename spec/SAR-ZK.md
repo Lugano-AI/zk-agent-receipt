@@ -261,8 +261,9 @@ deployment defines; any public field element is valid. The same receipt proven t
 scope gives the same nullifier, so a verifier that keeps a nullifier set sees
 the repeat. The nullifier does not depend on the log position, so logging the
 same `S` twice does not create a second nullifier. Under honestly distinct scopes, nullifier
-values cannot be linked while `nk` stays secret, assuming `H_nf` keyed by `nk`
-behaves as a PRF. That covers nullifier values only. Whole presentations can
+values cannot be linked while `nk` stays secret, assuming `H_nf(nk, ·)` is a
+PRF even to a party that holds `H_nk(nk, r)`, and that the presented proof is
+zero-knowledge (§9.2). That covers nullifier values only. Whole presentations can
 still be linked through a shared scope, the rest of the public input, a small
 candidate set (§11), timing, or colluding verifiers. Colluding verifiers can
 always agree to share a scope.
@@ -343,9 +344,12 @@ values. There are three step circuits, selected by `pc`:
   `1 <= T < 2^32`), `pay_count <= payment_bound` (with 32-bit range checks on
   both), the issuer signature, membership of `leaf(S)`
   (with `leaf_index` constrained to 32 bits and checked to be below
-  `tree_size`), the opening of `nk_commitment`, and the nullifier. The issuer computed
-  `S.transcript` starting from `S.task_binding`, so the transcript equality
-  also binds the `task_binding` that `F_start` used (by collision resistance).
+  `tree_size`), the opening of `nk_commitment`, and the nullifier. An honest issuer
+  computed `S.transcript` starting from `S.task_binding`. For a statement
+  issued that way, the transcript equality also binds the `task_binding` that
+  `F_start` used (by collision resistance). The circuit does not check that
+  `F_start` used `S.task_binding`, so it does not catch an issuer that signs a
+  transcript built from another task binding.
   It sets `pc = HALT`, `acc = 0` and `out = nullifier`.
 
 The verifier sets the initial state to `(START, 0, public_bind, 0)` from its own
@@ -485,8 +489,9 @@ C_Q = { R in C_0 : P_j(R) = a_j for every j }
 
 The outcomes carry at most `Q` bits, but nothing bounds `|C_Q|` from below:
 one bit can leave a single record. With free choice of policy, the allowlist
-`U \ {D}` asks whether tool `D` ran, about 32 payment bounds give the exact
-payment count by binary search, and one query gives the egress flag.
+`U \ {D}` asks whether tool `D` ran, payment bounds give the exact payment
+count by binary search in at most `ceil(log2(N + 1))` queries for padded step
+count `N` (11 at `N = 1,024`, 21 at the `2^20` cap), and one query gives the egress flag.
 
 A holder wallet MUST apply these three controls:
 
