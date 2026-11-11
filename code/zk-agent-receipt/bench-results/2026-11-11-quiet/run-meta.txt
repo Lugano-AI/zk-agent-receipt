@@ -1,0 +1,11 @@
+start_utc=2026-11-11T13:38:13Z
+start_local=Wed Nov 11 05:38:13 PST 2026
+load_start={ 1.39 5.75 17.85 }
+start_gate=met (rule: all other programs under 150% of one core in total for 10 minutes in a row; wait limit 60 minutes)
+source=tag v0.5, commit 0d556584b165fe45bac99d9dd5181c29f1c9a86a
+binary_sha256=21dec44735bf98786c66fdb282176ea8589e31fd706d83b4e8682bf4e0ac8e35
+command=zkar-bench --t 10,100,1000 --reps 3 --out <results folder>
+exit_code=0
+end_utc=2026-11-11T15:02:15Z
+end_local=Wed Nov 11 07:02:15 PST 2026
+load_end={ 12.44 20.21 25.44 }

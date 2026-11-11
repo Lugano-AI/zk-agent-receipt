@@ -1,6 +1,6 @@
 # Sealed Receipts: Zero-Knowledge Policy Checks for AI Agent Task Records
 
-By Lugano Labs. Draft v0.5 for public comment, 10 November 2026.
+By Lugano Labs. Draft v0.5.1 for public comment, 11 November 2026.
 
 This paper specifies a construction and reports measurements of a profile-b
 reference prover. The prover and the comparison have not been independently
@@ -31,12 +31,13 @@ transparent Spartan SNARK with IPA compression. It needs no trusted setup. Its
 zero-knowledge construction folds in random satisfying instances before
 compression; the implementation has not been independently audited.
 
-On one Apple M5 Max CPU, our 1,000-entry proof took 94.926 s to create and 63.9
-ms to verify, and was 11,784 bytes long. The 63.9 ms is the proof check alone.
+On one Apple M5 Max CPU, our 1,000-entry proof took 92.936 s to create and 56.4
+ms to verify, and was 11,784 bytes long. The 56.4 ms is the proof check alone.
 A new verifier process first spends about 6.2 s loading its 64.6 MB key. RISC
 Zero's faster composite mode took 29,316 s for a test record of the same
-length, about 308× our proving time. That was one run, on a machine that was
-also in use. The proof covers the data the issuer declared, not what the agent
+length, about 315× our proving time. That was one run, on a machine that was
+also in use. A second try on a quiet machine stopped with an error and gave no
+time. The proof covers the data the issuer declared, not what the agent
 actually did.
 
 ## Lay summary
@@ -64,7 +65,7 @@ cryptography, including tools Zcash uses to keep payments private.
 
 We built a first working version and measured it on one computer, an Apple M5
 Max, using only its processor. For a task of 1,000 steps, making the proof took
-about 95 seconds. Checking it took about 64 milliseconds, and the proof is
+about 93 seconds. Checking it took about 56 milliseconds, and the proof is
 about 12 kilobytes. The checking time and the proof size stayed about the same
 from 10 steps to 1,000. The time to make the proof grew with the number of
 steps.
@@ -72,8 +73,9 @@ steps.
 We ran the same check in the faster mode of RISC Zero, a general-purpose system
 that can prove any program. For a 100-step task it took about 55 minutes,
 against just over 15 seconds for ours. For 1,000 steps it took about 8.1
-hours, about 308 times our time. We ran that case once, while the computer was
-also doing other work. Other work slows RISC Zero down, so a quiet computer
+hours, about 315 times our time. It finished once, while the computer was also doing
+other work. A second try on a quiet computer stopped after about 7 hours, when
+part of the proof failed RISC Zero's own check. We don't know why. Other work slows RISC Zero down, so a quiet computer
 would give a smaller gap. We do not know by how much. A graphics card would
 speed RISC Zero up, and we did not test one. Nobody outside has audited the
 work yet.
@@ -565,9 +567,9 @@ here.
 
 The following design and hypotheses were stated before measurement. Their
 wording is unchanged. This is our own account: we did not register them with a
-third party, and this repository's history starts after every measurement but
-two: the 1,000-entry RISC Zero run and the whole-command timing of
-`zkar verify`. Section 9.2 describes both.
+third party, and this repository's history starts after every measurement but three: the 1,000-entry RISC Zero run, the
+whole-command timing of `zkar verify` and the 11 November rerun of our native
+benchmark. Section 9.2 describes all three.
 
 We will build profile b first and measure it.
 
@@ -606,6 +608,14 @@ own. So the component medians need not add up to the total median. Setup is
 separate from proving. Folded proving time is recursive folding plus
 compression. Peak RSS covers the whole fresh worker process. Proof sizes omit
 verification keys and public-input transport.
+
+The native figures come from a run on 11 November 2026 of the published v0.5
+code. Before it started, other programs had used under 150% of one core in
+total for ten minutes in a row. During it, a sample every five minutes put
+them at 21% to 161% of one core, 75% on average. An earlier run, on 9
+November, timed the code before the hardening changes that the README lists.
+Its results stay in the repository. At 1,000 entries, folded proving took
+94.926 s in that run and 92.936 s in this one.
 
 The native fixtures are synthetic and use a recorded seed. They contain 16
 receipts with the same issuer, policy and public run-length bucket. This count
@@ -653,9 +663,12 @@ CPU during the run that we report. We sampled the load every five minutes with
 `ps`. Over the 97 samples taken after launch, the prover held a mean of 1,620%
 CPU out of 1,800%. The log's first line is the sample at launch. Other programs
 took a mean of 102%, with a peak of 706%. Shared load slows RISC Zero, so this
-run favours our system by an amount we cannot state. We made the other runs,
-ours and RISC Zero's, with no other heavy work on the machine, but we kept no
-load log for them.
+run favours our system by an amount we cannot state. A later attempt on a quiet
+machine, on 10 and 11 November, ran for 7 hours 13 minutes and then stopped
+with an error: a segment proof failed RISC Zero's own check. It wrote no
+receipt and no time, and we don't know the cause. We made RISC Zero's 10- and
+100-entry runs with no other heavy work on the machine, but we kept no load log
+for them.
 
 RISC Zero did not prove the succinct `T = 1,000` case. For that mode, we draw a
 straight line in total cycles through the `T = 10` median and the `T = 100`
@@ -674,7 +687,7 @@ exclude Ed25519 log-head verification, proof decoding, verification-key pinning
 and replay storage. The RISC Zero times cover receipt verification. So these
 are core-proof comparisons. They are not full sealed-receipt request timings.
 
-After the benchmark runs, we timed the whole `zkar verify` command on a
+After the 9 November benchmark runs, we timed the whole `zkar verify` command on a
 10-entry record. We ran the command 10 times. Each run started a new process
 with a new replay file, on a machine in use. The median was about 6.5 s, with a
 range of 6.47 s to 6.74 s. Loading the verification key takes about 6.2 s of
@@ -691,20 +704,20 @@ records hold the exact values.
 
 | System | T | Setup (s) | Prove (s) | Verify (ms) | Proof bytes | Peak RSS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| folded | 10 | 4.172260 | 4.876322 | 59.950 | 11,784 | 785,907,712 |
-| folded | 100 | 4.217821 | 15.297333 | 64.204 | 11,784 | 797,360,128 |
-| folded | 1,000 | 4.277097 | 94.925892 | 63.893 | 11,784 | 673,251,328 |
-| monolithic | 10 | 6.077716 | 6.666265 | 103.544 | 6,056 | 1,453,588,480 |
-| monolithic | 100 | 57.841601 | 47.909980 | 496.239 | 6,992 | 11,669,864,448 |
-| monolithic | 1,000 | 405.149895 | 410.484430 | 4,917.643 | 7,928 | 70,747,422,720 |
-| per-entry | 10 | 1.780428 | 6.365334 | 171.854 | 53,512 | 459,292,672 |
-| per-entry | 100 | 2.093910 | 48.858484 | 1,403.516 | 486,232 | 665,190,400 |
-| per-entry | 1,000 | 2.246029 | 510.513591 | 13,575.153 | 4,813,432 | 636,977,152 |
+| folded | 10 | 2.755776 | 5.231706 | 56.619 | 11,784 | 798,277,632 |
+| folded | 100 | 3.214243 | 15.010622 | 60.905 | 11,784 | 798,965,760 |
+| folded | 1,000 | 3.311566 | 92.936313 | 56.428 | 11,784 | 674,054,144 |
+| monolithic | 10 | 5.056313 | 6.380354 | 102.357 | 6,056 | 1,458,667,520 |
+| monolithic | 100 | 44.448691 | 51.856273 | 503.208 | 6,992 | 11,677,253,632 |
+| monolithic | 1,000 | 411.119188 | 428.909797 | 5,072.056 | 7,928 | 67,104,342,016 |
+| per-entry | 10 | 1.769925 | 6.471044 | 186.152 | 53,512 | 457,244,672 |
+| per-entry | 100 | 1.484566 | 52.875219 | 1,307.699 | 486,232 | 633,044,992 |
+| per-entry | 1,000 | 2.706071 | 476.504850 | 12,768.823 | 4,813,432 | 653,328,384 |
 
 Folded proving beats both direct baselines already at `T = 10`. Its proof is
 larger than the monolithic proof, and its peak memory is higher than per-entry
-proving. At `T = 1,000`, monolithic setup takes 405.149895 s, peak RSS reaches
-70,747,422,720 bytes (about 70.7 GB), and verification takes 4.917643 s. These
+proving. At `T = 1,000`, monolithic setup takes 411.119188 s, peak RSS reaches
+67,104,342,016 bytes (about 67.1 GB), and verification takes 5.072056 s. These
 are not hidden costs of the folded system, but they show why the table reports
 setup and memory as well as proving time.
 
@@ -749,7 +762,7 @@ even with the shared load. The straight line overstated the composite time. The
 succinct estimate may be too high in the same way.
 
 At the two sizes where we measured it, 10 and 100 entries, RISC Zero's succinct
-receipt verifies in about 9 ms, faster than our 60 to 64 ms. Its receipt is
+receipt verifies in about 9 ms, faster than our 56 to 61 ms. Its receipt is
 225,018 bytes against our 11,784 bytes. We lose on verification speed and win on
 proof size in this comparison. The composite receipt grows with the run. At `T =
 1,000` it is 201,128,174 bytes and takes 7.674 s to verify.
@@ -757,22 +770,23 @@ proof size in this comparison. The composite receipt grows with the run. At `T =
 ### 9.5 Hypothesis verdicts
 
 - **H1: supported by the measurements.** Folded proof size is 11,784 bytes at
-  all three sizes. Median verification stays between 59.9 and 64.3 ms from 10
+  all three sizes. Median verification stays between 56.4 and 61.0 ms from 10
   to 1,000 entries. We set no tolerance for "flat" in advance; the highest
-  median is about 7% above the lowest. This is a result for these fixtures and
+  median is about 8% above the lowest. This is a result for these fixtures and
   this machine, not a proof about every run length. The hypothesis said a
   failure would mean an implementation error. That was too strong, because
   timing noise alone could also break flatness.
 - **H2: supported by the measurements.** Against composite RISC Zero, folded
-  proving is 163.100 times faster at `T = 10`, 216.483 times faster at `T =
-  100` and 308.831 times faster at `T = 1,000`. The `T = 100` and `T = 1,000`
+  proving is 152.021 times faster at `T = 10`, 220.618 times faster at `T =
+  100` and 315.443 times faster at `T = 1,000`. The `T = 100` and `T = 1,000`
   factors each come from one RISC Zero run, so we have no run-to-run spread for
   them. The `T = 1,000` run was on a machine in use, so a quiet machine would
-  give a lower factor. One run cannot bound the effect of the load. The prover
+  give a lower factor. Our quiet attempt gave no time (Section 9.2). One run
+  cannot bound the effect of the load. The prover
   held a mean of 90% of the CPU, and the `T = 100` run, made without that load,
-  already gives a factor of about 216. We therefore do not expect the load to
-  change the verdict. The corresponding succinct factors are 195.928, 267.212
-  and an estimated 398.473. We truncated every factor to three decimal places.
+  already gives a factor of about 220. We therefore do not expect the load to
+  change the verdict. The corresponding succinct factors are 182.619, 272.316
+  and an estimated 407.004. We truncated every factor to three decimal places.
   We never rounded one up. All exceed the factor of ten stated in advance. H2
   said "on the same relation" and named no hardware. What we tested is
   narrower: the guest is stricter on the task binding, the two provers ran
@@ -791,15 +805,15 @@ computed them from the rounded values shown.
 
 | T | Folds | Recursive (s) | Recursive per fold (ms) | Compression (s) | Compression / per-fold (folds) |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10 | 16 | 1.467377 | 91.711063 | 3.375707 | 36.808068 |
-| 100 | 128 | 11.438193 | 89.360883 | 3.805185 | 42.582223 |
-| 1,000 | 1,024 | 91.511533 | 89.366731 | 3.414359 | 38.206153 |
+| 10 | 16 | 1.381657 | 86.353563 | 3.850048 | 44.584704 |
+| 100 | 128 | 11.247136 | 87.868250 | 3.702335 | 42.135072 |
+| 1,000 | 1,024 | 89.011785 | 86.925571 | 3.723830 | 42.839293 |
 
-For example, at `T = 100`, `11.438193 / 128 = 0.0893608828125` s per fold and
-`3.805185 / 0.0893608828125 = 42.582222559...` folds. The other rows use the
-same arithmetic. Compression stays in a narrow 3.375707–3.805185 s range while
+For example, at `T = 100`, `11.247136 / 128 = 0.08786825` s per fold and
+`3.702335 / 0.08786825 = 42.135071541...` folds. The other rows use the
+same arithmetic. Compression stays in a narrow 3.702335–3.850048 s range while
 recursive folding grows. Folding is below compression at 16 folds and above it
-at 128 folds. The ratios imply a crossing at about 37–43 folds. That would fall
+at 128 folds. The ratios imply a crossing at about 42–45 folds. That would fall
 in the 64-fold bucket. We did not measure that bucket.
 
 Separately, folded proving already beats monolithic and per-entry proving at `T
@@ -815,7 +829,8 @@ We did not build its Ed25519 final circuit.
   latter has no measured run-to-run spread.
 - The `T = 1,000` composite RISC Zero time is one run on a machine in use.
   Shared load slowed it by an unknown amount. That favours us. It has no
-  measured run-to-run spread. The succinct `T = 1,000` time is a straight-line
+  measured run-to-run spread. A quiet attempt stopped with an error after 7
+  hours 13 minutes and gave no time. The succinct `T = 1,000` time is a straight-line
   cycle estimate, not a proof measurement.
 - RISC Zero proves arbitrary programs. Our system proves one fixed relation.
   The guest also omits the outer receipt protocol. Receipt encodings and
@@ -835,8 +850,10 @@ We did not build its Ed25519 final circuit.
   decoding, key loading and replay storage. The whole command took about 6.5 s
   on a 10-entry record, and loading the verification key took almost all of it
   (Section 9.2). That is one record size, on a machine in use.
-- The benchmark run recorded dependency versions and raw logs but no source
-  revision. The implementation has not been independently audited.
+- The benchmark tool records dependency versions and raw logs but no source
+  revision; our run notes name the commit. We built the binary from the tagged
+  v0.5 code, and on 11 November no source file was newer than the binary
+  (`bench-results/2026-11-11-quiet/NOTE.md`). The implementation has not been independently audited.
 
 ## 10. Limits
 
@@ -868,8 +885,8 @@ We did not build its Ed25519 final circuit.
     composite RISC Zero time is one run under shared load. The succinct time is
     an estimate. GPU proving is unmeasured.
 13. Folded proving is not best on every metric. RISC Zero's succinct receipt
-    verifies in about 9 ms (measured at 10 and 100 entries) against our 60 to
-    64 ms, but it is 225,018 bytes against our 11,784 bytes. The monolithic
+    verifies in about 9 ms (measured at 10 and 100 entries) against our 56 to
+    61 ms, but it is 225,018 bytes against our 11,784 bytes. The monolithic
     proof is smaller than ours: 7,928 bytes against 11,784 at 1,000 entries.
     Per-entry proving uses less peak memory in these runs.
 

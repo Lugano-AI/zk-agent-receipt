@@ -1,0 +1,12 @@
+start_utc=2026-11-11T06:14:56Z
+start_local=Tue Nov 10 22:14:56 PST 2026
+load_start={ 1.33 1.44 1.45 }
+start_gate=met (rule: all other programs under 150% of one core in total for 10 minutes in a row, between 2026-11-10 22:00:00 and 2026-11-11 00:30:00 local)
+binary_sha256=1129854a8cc58318d152a9a6058db2fe7ef63d8a03872c1f4d605f5727f52091
+cargo_lock_sha256=be11809c65d44e08e0d20fe9310276aff8edf0f5f5ef9ccc0e88809147472859
+command=baseline-host prove --t 1000 --receipt-kind composite --seed 5341522d5a4b2d76302e34622d666978747572652d736565642d303030312121 --receipt-out bench-results/2026-11-11-t1000-quiet/receipts/composite-t1000-r2.receipt
+environment=RISC0_DEV_MODE=0 RISC0_PROVER=local RISC0_EXECUTOR=local; RISC0_BACKEND and RAYON_NUM_THREADS unset
+exit_code=1
+end_utc=2026-11-11T13:28:12Z
+end_local=Wed Nov 11 05:28:12 PST 2026
+load_end={ 22.73 32.34 34.24 }

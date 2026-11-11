@@ -131,7 +131,9 @@ and compares its journal to native verification. The raw records of the
 measured run are in `bench-results/2026-11-09-quiet/raw/`: three runs per
 receipt kind at T=10 and one run per receipt kind at T=100. One composite run
 at T=1000 is in `bench-results/2026-11-10-t1000/`, with its load log; other
-programs used the machine during that run. Succinct T=1000 was not proved. The
+programs used the machine during that run. A quiet attempt at T=1000, in
+`bench-results/2026-11-11-t1000-quiet/`, stopped with an error and gave no time.
+Succinct T=1000 was not proved. The
 receipt files are not in this repository because of their size (about 0.2 to
 201 MB each); the `receipt_path` fields in the raw records name where they
 were written. For the full budgeted serial runner, use an

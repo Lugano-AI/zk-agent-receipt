@@ -69,6 +69,8 @@ cargo run --release --target aarch64-apple-darwin -p zkar-bench -- --t 10,100,10
 ```
 
 The measured results in this repository are in
+[`bench-results/2026-11-11-quiet/`](bench-results/2026-11-11-quiet/), from the
+published v0.5 code. An earlier run, on code before the hardening changes, is in
 [`bench-results/2026-11-09-quiet/`](bench-results/2026-11-09-quiet/).
 
 Uniform Nova pays all three branches on every fold. Standalone branch counts

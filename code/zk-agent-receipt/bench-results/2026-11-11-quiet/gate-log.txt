@@ -1,0 +1,10 @@
+2026-11-11T13:28:12Z other_cpu=143% quiet_minutes=1
+2026-11-11T13:29:12Z other_cpu=148% quiet_minutes=2
+2026-11-11T13:30:12Z other_cpu=37% quiet_minutes=3
+2026-11-11T13:31:12Z other_cpu=82% quiet_minutes=4
+2026-11-11T13:32:12Z other_cpu=74% quiet_minutes=5
+2026-11-11T13:33:12Z other_cpu=44% quiet_minutes=6
+2026-11-11T13:34:12Z other_cpu=49% quiet_minutes=7
+2026-11-11T13:35:12Z other_cpu=58% quiet_minutes=8
+2026-11-11T13:36:12Z other_cpu=53% quiet_minutes=9
+2026-11-11T13:37:13Z other_cpu=58% quiet_minutes=10

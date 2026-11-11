@@ -6,11 +6,11 @@ authors:
   - name: Lugano Labs
 repository-code: https://github.com/Lugano-AI/zk-agent-receipt
 license: Apache-2.0
-date-released: 2026-11-10
+date-released: 2026-11-11
 preferred-citation:
   type: report
   title: "Sealed Receipts: Zero-Knowledge Policy Checks for AI Agent Task Records"
-  notes: Draft v0.5 for public comment
+  notes: Draft v0.5.1 for public comment
   authors:
     - name: Lugano Labs
   year: 2026

@@ -1,0 +1,19 @@
+folded T=1000: setup
+folded T=1000: 1024 recursive folds
+recursive folds: 64/1024
+recursive folds: 128/1024
+recursive folds: 192/1024
+recursive folds: 256/1024
+recursive folds: 320/1024
+recursive folds: 384/1024
+recursive folds: 448/1024
+recursive folds: 512/1024
+recursive folds: 576/1024
+recursive folds: 640/1024
+recursive folds: 704/1024
+recursive folds: 768/1024
+recursive folds: 832/1024
+recursive folds: 896/1024
+recursive folds: 960/1024
+recursive folds: 1024/1024
+folded T=1000: compression (recursion 88.299s)

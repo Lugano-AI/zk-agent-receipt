@@ -1,0 +1,12 @@
+per-entry T=1000: setup (distinct shapes only)
+per-entry T=1000: proof 1/1001
+per-entry T=1000: proof 101/1001
+per-entry T=1000: proof 201/1001
+per-entry T=1000: proof 301/1001
+per-entry T=1000: proof 401/1001
+per-entry T=1000: proof 501/1001
+per-entry T=1000: proof 601/1001
+per-entry T=1000: proof 701/1001
+per-entry T=1000: proof 801/1001
+per-entry T=1000: proof 901/1001
+per-entry T=1000: proof 1001/1001

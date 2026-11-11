@@ -1,0 +1,3 @@
+folded T=10: setup
+folded T=10: 16 recursive folds
+folded T=10: compression (recursion 1.382s)

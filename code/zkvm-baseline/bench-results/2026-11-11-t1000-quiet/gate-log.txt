@@ -1,0 +1,15 @@
+2026-11-10T21:19:48Z waiting until 2026-11-10 22:00:00 local
+2026-11-11T06:00:55Z other_cpu=46% quiet_minutes=1
+2026-11-11T06:01:55Z other_cpu=116% quiet_minutes=2
+2026-11-11T06:02:55Z other_cpu=55% quiet_minutes=3
+2026-11-11T06:03:55Z other_cpu=169% quiet_minutes=0
+2026-11-11T06:04:55Z other_cpu=42% quiet_minutes=1
+2026-11-11T06:05:55Z other_cpu=112% quiet_minutes=2
+2026-11-11T06:06:55Z other_cpu=67% quiet_minutes=3
+2026-11-11T06:07:55Z other_cpu=68% quiet_minutes=4
+2026-11-11T06:08:55Z other_cpu=46% quiet_minutes=5
+2026-11-11T06:09:56Z other_cpu=56% quiet_minutes=6
+2026-11-11T06:10:56Z other_cpu=39% quiet_minutes=7
+2026-11-11T06:11:56Z other_cpu=47% quiet_minutes=8
+2026-11-11T06:12:56Z other_cpu=60% quiet_minutes=9
+2026-11-11T06:13:56Z other_cpu=55% quiet_minutes=10

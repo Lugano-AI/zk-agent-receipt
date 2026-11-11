@@ -1,0 +1,180 @@
+[zkar-bench] starting folded T=10 repetition 1/3 (fresh child; 5400s configuration budget remains)
+folded T=10: setup
+folded T=10: 16 recursive folds
+folded T=10: compression (recursion 1.373s)
+[zkar-bench] starting folded T=10 repetition 2/3 (fresh child; 5391s configuration budget remains)
+folded T=10: setup
+folded T=10: 16 recursive folds
+folded T=10: compression (recursion 1.382s)
+[zkar-bench] starting folded T=10 repetition 3/3 (fresh child; 5383s configuration budget remains)
+folded T=10: setup
+folded T=10: 16 recursive folds
+folded T=10: compression (recursion 1.424s)
+[zkar-bench] starting folded T=100 repetition 1/3 (fresh child; 5400s configuration budget remains)
+folded T=100: setup
+folded T=100: 128 recursive folds
+recursive folds: 64/128
+recursive folds: 128/128
+folded T=100: compression (recursion 11.308s)
+[zkar-bench] starting folded T=100 repetition 2/3 (fresh child; 5381s configuration budget remains)
+folded T=100: setup
+folded T=100: 128 recursive folds
+recursive folds: 64/128
+recursive folds: 128/128
+folded T=100: compression (recursion 11.247s)
+[zkar-bench] starting folded T=100 repetition 3/3 (fresh child; 5362s configuration budget remains)
+folded T=100: setup
+folded T=100: 128 recursive folds
+recursive folds: 64/128
+recursive folds: 128/128
+folded T=100: compression (recursion 11.178s)
+[zkar-bench] starting folded T=1000 repetition 1/3 (fresh child; 5400s configuration budget remains)
+folded T=1000: setup
+folded T=1000: 1024 recursive folds
+recursive folds: 64/1024
+recursive folds: 128/1024
+recursive folds: 192/1024
+recursive folds: 256/1024
+recursive folds: 320/1024
+recursive folds: 384/1024
+recursive folds: 448/1024
+recursive folds: 512/1024
+recursive folds: 576/1024
+recursive folds: 640/1024
+recursive folds: 704/1024
+recursive folds: 768/1024
+recursive folds: 832/1024
+recursive folds: 896/1024
+recursive folds: 960/1024
+recursive folds: 1024/1024
+folded T=1000: compression (recursion 88.299s)
+[zkar-bench] starting folded T=1000 repetition 2/3 (fresh child; 5304s configuration budget remains)
+folded T=1000: setup
+folded T=1000: 1024 recursive folds
+recursive folds: 64/1024
+recursive folds: 128/1024
+recursive folds: 192/1024
+recursive folds: 256/1024
+recursive folds: 320/1024
+recursive folds: 384/1024
+recursive folds: 448/1024
+recursive folds: 512/1024
+recursive folds: 576/1024
+recursive folds: 640/1024
+recursive folds: 704/1024
+recursive folds: 768/1024
+recursive folds: 832/1024
+recursive folds: 896/1024
+recursive folds: 960/1024
+recursive folds: 1024/1024
+folded T=1000: compression (recursion 90.696s)
+[zkar-bench] starting folded T=1000 repetition 3/3 (fresh child; 5205s configuration budget remains)
+folded T=1000: setup
+folded T=1000: 1024 recursive folds
+recursive folds: 64/1024
+recursive folds: 128/1024
+recursive folds: 192/1024
+recursive folds: 256/1024
+recursive folds: 320/1024
+recursive folds: 384/1024
+recursive folds: 448/1024
+recursive folds: 512/1024
+recursive folds: 576/1024
+recursive folds: 640/1024
+recursive folds: 704/1024
+recursive folds: 768/1024
+recursive folds: 832/1024
+recursive folds: 896/1024
+recursive folds: 960/1024
+recursive folds: 1024/1024
+folded T=1000: compression (recursion 89.012s)
+[zkar-bench] starting monolithic T=10 repetition 1/3 (fresh child; 5400s configuration budget remains)
+monolithic T=10: setup
+monolithic T=10: prove
+[zkar-bench] starting monolithic T=10 repetition 2/3 (fresh child; 5388s configuration budget remains)
+monolithic T=10: setup
+monolithic T=10: prove
+[zkar-bench] starting monolithic T=10 repetition 3/3 (fresh child; 5376s configuration budget remains)
+monolithic T=10: setup
+monolithic T=10: prove
+[zkar-bench] starting monolithic T=100 repetition 1/3 (fresh child; 5400s configuration budget remains)
+monolithic T=100: setup
+monolithic T=100: prove
+[zkar-bench] starting monolithic T=100 repetition 2/3 (fresh child; 5301s configuration budget remains)
+monolithic T=100: setup
+monolithic T=100: prove
+[zkar-bench] starting monolithic T=100 repetition 3/3 (fresh child; 5211s configuration budget remains)
+monolithic T=100: setup
+monolithic T=100: prove
+[zkar-bench] starting monolithic T=1000 repetition 1/3 (fresh child; 5400s configuration budget remains)
+monolithic T=1000: setup
+monolithic T=1000: prove
+[zkar-bench] starting monolithic T=1000 repetition 2/3 (fresh child; 4456s configuration budget remains)
+monolithic T=1000: setup
+monolithic T=1000: prove
+[zkar-bench] starting monolithic T=1000 repetition 3/3 (fresh child; 3587s configuration budget remains)
+monolithic T=1000: setup
+monolithic T=1000: prove
+[zkar-bench] starting per-entry T=10 repetition 1/3 (fresh child; 5400s configuration budget remains)
+per-entry T=10: setup (distinct shapes only)
+per-entry T=10: proof 1/11
+per-entry T=10: proof 11/11
+[zkar-bench] starting per-entry T=10 repetition 2/3 (fresh child; 5389s configuration budget remains)
+per-entry T=10: setup (distinct shapes only)
+per-entry T=10: proof 1/11
+per-entry T=10: proof 11/11
+[zkar-bench] starting per-entry T=10 repetition 3/3 (fresh child; 5380s configuration budget remains)
+per-entry T=10: setup (distinct shapes only)
+per-entry T=10: proof 1/11
+per-entry T=10: proof 11/11
+[zkar-bench] starting per-entry T=100 repetition 1/3 (fresh child; 5400s configuration budget remains)
+per-entry T=100: setup (distinct shapes only)
+per-entry T=100: proof 1/101
+per-entry T=100: proof 101/101
+[zkar-bench] starting per-entry T=100 repetition 2/3 (fresh child; 5344s configuration budget remains)
+per-entry T=100: setup (distinct shapes only)
+per-entry T=100: proof 1/101
+per-entry T=100: proof 101/101
+[zkar-bench] starting per-entry T=100 repetition 3/3 (fresh child; 5286s configuration budget remains)
+per-entry T=100: setup (distinct shapes only)
+per-entry T=100: proof 1/101
+per-entry T=100: proof 101/101
+[zkar-bench] starting per-entry T=1000 repetition 1/3 (fresh child; 5400s configuration budget remains)
+per-entry T=1000: setup (distinct shapes only)
+per-entry T=1000: proof 1/1001
+per-entry T=1000: proof 101/1001
+per-entry T=1000: proof 201/1001
+per-entry T=1000: proof 301/1001
+per-entry T=1000: proof 401/1001
+per-entry T=1000: proof 501/1001
+per-entry T=1000: proof 601/1001
+per-entry T=1000: proof 701/1001
+per-entry T=1000: proof 801/1001
+per-entry T=1000: proof 901/1001
+per-entry T=1000: proof 1001/1001
+[zkar-bench] starting per-entry T=1000 repetition 2/3 (fresh child; 4889s configuration budget remains)
+per-entry T=1000: setup (distinct shapes only)
+per-entry T=1000: proof 1/1001
+per-entry T=1000: proof 101/1001
+per-entry T=1000: proof 201/1001
+per-entry T=1000: proof 301/1001
+per-entry T=1000: proof 401/1001
+per-entry T=1000: proof 501/1001
+per-entry T=1000: proof 601/1001
+per-entry T=1000: proof 701/1001
+per-entry T=1000: proof 801/1001
+per-entry T=1000: proof 901/1001
+per-entry T=1000: proof 1001/1001
+[zkar-bench] starting per-entry T=1000 repetition 3/3 (fresh child; 4444s configuration budget remains)
+per-entry T=1000: setup (distinct shapes only)
+per-entry T=1000: proof 1/1001
+per-entry T=1000: proof 101/1001
+per-entry T=1000: proof 201/1001
+per-entry T=1000: proof 301/1001
+per-entry T=1000: proof 401/1001
+per-entry T=1000: proof 501/1001
+per-entry T=1000: proof 601/1001
+per-entry T=1000: proof 701/1001
+per-entry T=1000: proof 801/1001
+per-entry T=1000: proof 901/1001
+per-entry T=1000: proof 1001/1001

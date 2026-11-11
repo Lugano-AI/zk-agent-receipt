@@ -1,0 +1,2 @@
+monolithic T=10: setup
+monolithic T=10: prove
